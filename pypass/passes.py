@@ -1,22 +1,26 @@
 #!/usr/bin/env python3
 """Pass information container."""
-from bs4 import BeautifulSoup as bs
-from difflib import get_close_matches
-import matplotlib.pyplot as plt
-
 import json
-from typing import Optional
-import requests
-import numpy as np
 from dataclasses import dataclass
+from difflib import get_close_matches
+from typing import Any
+from typing import Optional
+
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import numpy as np
+import requests
+from bs4 import BeautifulSoup as bs
 from numpy.typing import NDArray
-from .tools import hex_to_rgb, decompose_digit
+from tinydb import Query
+from tinydb import TinyDB
 
-from .quaeldich import PASS_DB_LOC, PASS_NAME_DB_LOC
+from .quaeldich import PASS_DB_LOC
+from .quaeldich import PASS_NAME_DB_LOC
+from .tools import decompose_digit
+from .tools import hex_to_rgb
 
-from tinydb import TinyDB, Query
-
-PX = 1 / plt.rcParams["figure.dpi"]
+PX = 1 / mpl.rcParams["figure.dpi"]
 GRAD_FIG_WIDTH = 720 * PX
 GRAD_FIG_HEIGHT = 120 * PX
 GRAD_TO_COLOR = np.asarray(
@@ -74,7 +78,7 @@ class Pass:
 
     name: str
     """Name of pass."""
-    coord: list[float, float]
+    coord: list[float]
     """coordinate of pass."""
     alt: str
     """Alternative name if exists"""
@@ -86,6 +90,20 @@ class Pass:
     """URL of the pass"""
     gpts: dict
     """Geographical coordinate information. Latitude, Longitude, Elevation, Distance."""
+    total_distance: list[float]
+    """Total distance of each paths."""
+    total_elevation: list[int]
+    """Total elevation of each paths."""
+    avg_grad: list[float]
+    """Average gradient of each paths."""
+    max_distance: float
+    """Max distance among the paths"""
+    min_distance: float
+    """Min distance among the paths"""
+    max_elevation: int
+    """Max elevation among the paths"""
+    min_elevation: int
+    """Min elevation among the paths"""
 
     def __post_init__(self):
 
@@ -124,31 +142,14 @@ class Pass:
         return len(self.geo_log)
 
     @property
-    def starts_from(self) -> list[float, float]:
+    def starts_from(self) -> list[list[float]]:
 
-        return [geo[0, :2] for geo in self.geo_log]
+        return [geo[0, :2].tolist() for geo in self.geo_log]
 
     @property
     def path_names(self) -> list[str]:
 
         return [self.gpts[pid]["name"] for pid in self.gpts]
-
-    @property
-    def total_distance(self) -> list[float]:
-        return [(geo[-1, -1] - geo[0, -1]) * 1000 for geo in self.geo_log]
-
-    @property
-    def total_elevation(self) -> list[float]:
-        return [geo[-1, -2] - geo[0, -2] for geo in self.geo_log]
-
-    @property
-    def avg_grad(self) -> list[float]:
-        """Compute average gradient from start to finish."""
-
-        return [
-            e / d * 100
-            for d, e in zip(self.total_distance, self.total_elevation)
-        ]
 
     @property
     def grad_max(self) -> list[float]:
@@ -279,43 +280,35 @@ class Pass:
             self._elev_interp.append(elev_interp)
             self._grad_color.append(grad_to_color(grad_interp))
 
-    def plot_gradient(self, idx: int, show: bool = False) -> plt.Figure:
+    # NOTE: type for plt.Figure is ambigous. Therefore, type: ignore
+    def plot_gradient(
+        self, idx: int, show: bool = False, tool: str = "pyplot"
+    ) -> Optional[plt.Figure]:  # type: ignore
+        """Plot gradient profile."""
 
-        fig, ax = plt.subplots(figsize=(GRAD_FIG_WIDTH, GRAD_FIG_HEIGHT))
+        if tool == "pyplot":
+            fig, ax = plt.subplots(figsize=(GRAD_FIG_WIDTH, GRAD_FIG_HEIGHT))
 
-        ax.bar(
-            self.grad_bin[idx],
-            self.elev_interp[idx],
-            color=self.grad_color[idx],
-            width=0.1,
-        )
-        ax.set_yticks(np.arange(0, 3000, 500))
-        ax.set_xticks(np.arange(0, 40, 5))
-        ax.set_ylim([self.elev_lower[idx], self.elev_upper[idx]])
-        ax.set_xlim([0, self.total_distance[idx] / 1000])
-        ax.set_xlabel("distance [km]")
-        ax.set_ylabel("elevation [m]")
+            ax.bar(
+                self.grad_bin[idx],
+                self.elev_interp[idx],
+                color=self.grad_color[idx],
+                width=0.1,
+            )
+            ax.set_yticks(np.arange(0, 3000, 500))
+            ax.set_xticks(np.arange(0, 40, 5))
+            ax.set_ylim([self.elev_lower[idx], self.elev_upper[idx]])
+            ax.set_xlim([0, self.total_distance[idx]])
+            ax.set_xlabel("distance [km]")
+            ax.set_ylabel("elevation [m]")
 
-        if show:
-            plt.show()
-
-        return fig
-
-    def plot_gradients(self, show: bool = False) -> plt.Figure:
-
-        fig, axes = plt.subplots(
-            self.num_pathes,
-            1,
-            figsize=(GRAD_FIG_WIDTH, GRAD_FIG_HEIGHT * self.num_pathes),
-        )
-
-        for ax, gb, ei, gc in zip(
-            axes, self.grad_bin, self.elev_interp, self.grad_color
-        ):
-            ax.bar(gb, ei, color=gc, width=0.1)
-
-        if show:
-            plt.show()
+            if show:
+                plt.show()
+        elif tool == "plotly":
+            # WIP
+            fig = None
+        else:
+            fig = None
 
         return fig
 
@@ -365,11 +358,73 @@ def deg2rad(deg: float) -> float:
 
 def search_pass_by_distance(distance: list[float]) -> list[Pass]:
 
+    db = TinyDB(PASS_DB_LOC)
+
     # Sanity check
     _sanity_check_list_input(distance)
 
+    from_db = db.search(
+        (
+            (Query().min_distance >= distance[0])
+            & (Query().min_distance <= distance[1])
+        )
+        | (
+            (Query().max_distance >= distance[0])
+            & (Query().max_distance <= distance[1])  # type: ignore
+        )
+    )
 
-def search_pass_by_height(elevation: list[int]) -> list[Pass]:
+    searched_pass = []
+
+    for data in from_db:
+        dist_list = np.asarray(data["total_distance"])
+        indicies = np.argwhere(
+            np.logical_and(dist_list > distance[0], dist_list < distance[1])
+        )
+
+        searched_pass.append(Pass(**_update_list_data(data, indicies)))
+
+    return searched_pass
+
+
+def _update_list_data(data: dict, indicies: NDArray[np.int64]) -> dict:
+
+    gpts = dict()
+    total_distance: list[float] = []
+    total_elevation: list[int] = []
+    avg_grad: list[float] = []
+
+    # Indices is 2D array. Therefore need to be accessed with zero index.
+    for i, idx in enumerate(indicies):
+        gpts.update({str(i): data["gpts"][str(idx[0])]})
+        total_distance.append(data["total_distance"][idx[0]])
+        total_elevation.append(data["total_elevation"][idx[0]])
+        avg_grad.append(data["avg_grad"][idx[0]])
+
+    max_distance = max(total_distance)
+    min_distance = min(total_distance)
+    max_elevation = max(total_elevation)
+    min_elevation = min(total_elevation)
+
+    data["gpts"] = gpts
+    data["total_distance"] = total_distance
+    data["total_elevation"] = total_elevation
+    data["max_distance"] = max_distance
+    data["min_distance"] = min_distance
+    data["max_elevation"] = max_elevation
+    data["min_elevation"] = min_elevation
+    data["avg_grad"] = avg_grad
+
+    return data
+
+
+def search_pass_by_elevation(elevation: list[int]) -> list[Pass]:
+
+    # Sanity check
+    _sanity_check_list_input(elevation)
+
+
+def search_pass_by_height(height: list[int]) -> list[Pass]:
     """Search pass by its height (heightest point).
 
     Args:
@@ -381,15 +436,16 @@ def search_pass_by_height(elevation: list[int]) -> list[Pass]:
 
     db = TinyDB(PASS_DB_LOC)
 
-    _sanity_check_list_input(elevation)
+    _sanity_check_list_input(height)
+
     from_db = db.search(
-        (Query().height > elevation[0]) & (Query().height < elevation[1])
+        (Query().height > height[0]) & (Query().height < height[1])
     )
 
     return [Pass(**data) for data in from_db]
 
 
-def _sanity_check_list_input(inputs: list[float]) -> None:
+def _sanity_check_list_input(inputs: list[float] | list[int]) -> None:
 
     # Sanity check
     assert (
@@ -405,7 +461,17 @@ def search_pass_by_region(region: str) -> list[Pass]:
     pass
 
 
-def search_pass_by_name(name: str) -> tuple[Optional[Pass], Optional[str]]:
+def search_pass_by_name(
+    name: str,
+) -> tuple[Optional[Pass], Optional[list[str]]]:
+    """Search pass by its name. First, it searches `db.names`. In the case of no matching name is found, check `db.alts` instead. Also, if there is a typo in the given name input, this function will return non-empty list contains name suggestions. Suggestion is made by using `difflib.get_close_mathces`.
+
+    Args:
+        name (str): name of a pass
+
+    Returns:
+        tuple[Optional[Pass], Optional[str]]: searched pass. If there is no matching name, return None and non-empty name suggestion.
+    """
 
     db = TinyDB(PASS_DB_LOC)
     db_names = TinyDB(PASS_NAME_DB_LOC)

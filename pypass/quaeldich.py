@@ -2,15 +2,21 @@
 """Retrieve pass data from https://www.quaeldich.de/. """
 from pathlib import Path
 from typing import Optional
+from unicodedata import combining
+from unicodedata import normalize
+
 import requests
 from bs4 import BeautifulSoup as bs
-from rich.progress import Progress, TimeElapsedColumn, TextColumn, track
-from tinydb import TinyDB, Query
-
-from unicodedata import combining, normalize
+from rich.progress import Progress
+from rich.progress import TextColumn
+from rich.progress import TimeElapsedColumn
+from rich.progress import track
+from tinydb import Query
+from tinydb import TinyDB
 
 PASS_DB_LOC = "./pypass/db/passes.json"
 PASS_NAME_DB_LOC = "./pypass/db/pass_names.json"
+
 BASE_URL = "https://www.quaeldich.de"
 BASE_PASS_URL = "https://www.quaeldich.de/paesse/"
 GERMAN_COMPASS_CONVERTER = {
@@ -72,7 +78,7 @@ def get_total_pass_count() -> int:
 def extract_pass_data(
     db_overwrite: bool = False,
     pass_counts: Optional[int] = None,
-) -> dict:
+) -> list[dict]:
     """Get pass data from quaeldich website.
 
     Data contains:
@@ -99,8 +105,11 @@ def extract_pass_data(
 
     if not db_overwrite:
         # Remove all databases
-        Path(PASS_NAME_DB_LOC).unlink()
-        Path(PASS_DB_LOC).unlink()
+        if Path(PASS_NAME_DB_LOC).exists():
+            Path(PASS_NAME_DB_LOC).unlink()
+
+        if Path(PASS_DB_LOC).exists():
+            Path(PASS_DB_LOC).unlink()
 
     with Progress(TEXT_COLUMN, TIME_COLUMN) as progress:
 
@@ -119,7 +128,10 @@ def extract_pass_data(
     all_names = []
     all_alts = []
 
-    for li in track(html_pass_list, description="[cyan]Processing data..."):
+    for li in track(
+        html_pass_list,
+        description=f"[cyan]Processing {len(html_pass_list)} pass data...",
+    ):
         row = li.find("div", {"class": "row"})
         all_divs = row.findAll("div")
         all_links = [href["href"] for href in row.findAll("a", href=True)]
@@ -150,12 +162,13 @@ def extract_pass_data(
         # Extract brief path info and translate german to english
         all_from_to = []
         for ft in data[6::3]:
-            ft_lower, ft = _convert_german(ft)
+            _, ft = _convert_german(ft)
             all_from_to.append(ft)
 
         # Obtain URLs for each path and path ids used in quaeldich website
         pass_coord, pass_url = _get_pass_coord(data[0])
         path_urls = _get_path_url(pass_url)
+        path_info = _get_path_info(pass_url)
         path_ids = _get_path_ids(path_urls)
         path_gpt_js = _get_gpt_data_js(path_ids)
 
@@ -174,6 +187,13 @@ def extract_pass_data(
             "height": int(data[2].strip(" m")),
             "url": pass_url,
             "gpts": gpt_dict,
+            "total_distance": path_info["distance"],
+            "total_elevation": path_info["elevation"],
+            "avg_grad": path_info["gradient"],
+            "max_distance": max(path_info["distance"]),
+            "min_distance": min(path_info["distance"]),
+            "max_elevation": max(path_info["elevation"]),
+            "min_elevation": min(path_info["elevation"]),
         }
 
         db = TinyDB(PASS_DB_LOC)
@@ -200,7 +220,7 @@ def extract_pass_data(
     return all_passes
 
 
-def _get_pass_coord(pass_name: str) -> tuple[list[float, float], str]:
+def _get_pass_coord(pass_name: str) -> tuple[list[float], str]:
 
     url_pass_name = pass_name.lower().replace(" ", "-")
 
@@ -285,6 +305,44 @@ def _get_path_url(pass_url: str) -> list[str]:
     ]
 
     return path_urls
+
+
+def _get_path_info(pass_url: str) -> dict:
+    """From pass name, obtain basic path information.
+
+    Args:
+        pass_name (str): name of the pass, in German.
+
+    Returns:
+        list[str]: list of urls of the pass
+    """
+    all_info = (
+        bs(requests.get(pass_url).text, "lxml")
+        .find("div", {"class": "panel-group"})
+        .find_all("small")
+    )
+
+    distance = []
+    elevation = []
+    gradient = []
+
+    for info in all_info:
+        data_extracted = info.text.replace(" ", "").split("|")
+        distance.append(
+            float(data_extracted[0].replace(",", ".").replace("km", ""))
+        )
+        elevation.append(
+            int(data_extracted[1].replace(",", ".").replace("Hm", ""))
+        )
+        gradient.append(
+            float(data_extracted[2].replace(",", ".").replace("%", ""))
+        )
+
+    return {
+        "distance": distance,
+        "elevation": elevation,
+        "gradient": gradient,
+    }
 
 
 def _convert_german(ft: str) -> tuple[str, str]:

@@ -1,4 +1,4 @@
-# Currently, the code is in alpha stage. Heavly under development!
+# Currently, the code is in alpha stage. Heavly under development! (Only a portion of web data is stored in `pypass/db` at this moment.)
 # PYPASS: Python wrapper for [quaeldich.de](https://www.quaeldich.de)
 
 A Python interface to access data in [quaeldich.de](https://www.quaeldich.de).
@@ -7,7 +7,7 @@ A Python interface to access data in [quaeldich.de](https://www.quaeldich.de).
 
 Install from source:
 We use `poetry` to manage all dependencies.
-- `git clone `
+- `git clone git@github.com:kyoungseoun-chung/pypass.git`
 - `poetry install`
 
 ## How it works
@@ -17,12 +17,13 @@ We use `poetry` to manage all dependencies.
 
 ## Usage
 
-Mountain pass can be searched by region, name, height, distance (WIP), and elevation gain(WIP).
+Mountain pass can be searched by region (WIP), name, height, distance, and elevation gain(WIP).
 
 ```python
 >>> from pypass.quaeldich import search_pass_by_name
 >>> Pass = search_pass_by_name("Mont Ventoux")
->>> Pass = search_pass_by_height([1000, 2000])
+>>> Pass = search_pass_by_height([1000, 2000]) # in meter
+>>> Pass = search_pass_by_distance([10, 15]) # in km
 ```
 
 ## Features
@@ -52,7 +53,7 @@ Mountain pass can be searched by region, name, height, distance (WIP), and eleva
 >>> from pypass.quaeldich import search_pass_by_name
 >>> Pass = search_pass_by_name("Mont Venoux") # Wrong input name
 The given name (Mont Vento) is not in our database. Did you mean ['Mont Ventoux']?
-# Name suggestion for the close match. 
+# Name suggestion for the close match.
 ```
 
 

@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """Useful tools."""
+from typing import Optional
 
 import numpy as np
-
-from typing import Optional
 
 
 def hex_to_rgb(hex: str, opacity: Optional[int] = None) -> list[int, int, int]:

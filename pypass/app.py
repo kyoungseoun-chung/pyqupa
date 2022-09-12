@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
 """Display pass data using streamlit library."""
 import os
-import numpy as np
-import streamlit as st
-from streamlit_folium import st_folium
-import folium
-from tinydb import TinyDB
 from itertools import cycle
+from typing import Any
+from typing import Optional
+
+import folium
+import numpy as np
 import pydeck as pdk
+import streamlit as st
 from dotenv import dotenv_values
+from streamlit_folium import st_folium
+from tinydb import TinyDB
+
 from pypass.tools import hex_to_rgb
 
 COLOR_CODE = cycle(
@@ -27,7 +31,7 @@ from pypass.passes import search_pass_by_name, Pass
 from pypass.quaeldich import PASS_NAME_DB_LOC
 
 
-def pypass_pass_search() -> Pass:
+def pypass_pass_search() -> Optional[Pass]:
 
     st.set_page_config(
         layout="centered", page_title="Pass Finder", page_icon="⛰"
@@ -45,7 +49,8 @@ def pypass_pass_search() -> Pass:
     return pass_searched
 
 
-def pypass_app_title(pass_searched: Pass) -> st:
+# NOTE: Currently not sure what is the type hint for streamlit app. Therefore, use Any.
+def pypass_app_title(pass_searched: Pass) -> Any:
 
     pass_title = (
         f"**{pass_searched.name}**"
@@ -109,7 +114,7 @@ def pypass_app_map_deck(pass_searched: Pass):
         pitch=45,
     )
 
-    min_elevation = min([elev[:, 2].min() for elev in pass_searched.geo_log])
+    min_elevation = min(elev[:, 2].min() for elev in pass_searched.geo_log)
     max_elevation = pass_searched.height
 
     # 10% offset
@@ -165,11 +170,11 @@ def pypass_app_map_folium(pass_searched: Pass) -> None:
             prefix="fa",
         )
 
-        folium.Marker(stp.tolist(), icon=icon_start).add_to(m)
+        folium.Marker(stp, icon=icon_start).add_to(m)
 
-        folium.PolyLine(path[:, :2], color=color, weight=4, opacity=0.7).add_to(
-            m
-        )
+        folium.PolyLine(
+            path[:, :2], color=color, weight=4, opacity=0.7
+        ).add_to(m)
 
     st_folium(m, width=725)
 
@@ -196,7 +201,10 @@ def pypass_app_gradient_plots(pass_searched: Pass) -> None:
 
 
 if __name__ == "__main__":
+
     pass_searched = pypass_pass_search()
-    pypass_app_title(pass_searched)
-    pypass_app_map_selector(pass_searched)
-    pypass_app_gradient_plots(pass_searched)
+
+    if pass_searched is not None:
+        pypass_app_title(pass_searched)
+        pypass_app_map_selector(pass_searched)
+        pypass_app_gradient_plots(pass_searched)
