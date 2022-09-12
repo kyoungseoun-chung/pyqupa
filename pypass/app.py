@@ -7,6 +7,7 @@ from typing import Optional
 
 import folium
 import numpy as np
+import pandas as pd
 import pydeck as pdk
 import streamlit as st
 from dotenv import dotenv_values
@@ -27,15 +28,13 @@ try:
 except KeyError:
     MAPBOX_API_KEY = dotenv_values(".env")["MAPBOX_API_KEY"]
 
-from pypass.passes import search_pass_by_name, Pass
+from pypass.passes import search_pass_by_name, Pass, search_pass_by_distance
 from pypass.quaeldich import PASS_NAME_DB_LOC
 
+st.set_page_config(layout="centered", page_title="Pass Finder", page_icon="⛰")
 
-def pypass_pass_search() -> Optional[Pass]:
 
-    st.set_page_config(
-        layout="centered", page_title="Pass Finder", page_icon="⛰"
-    )
+def pypass_pass_search_by_name() -> Optional[Pass]:
 
     db_names = TinyDB(PASS_NAME_DB_LOC)
 
@@ -45,6 +44,18 @@ def pypass_pass_search() -> Optional[Pass]:
 
     pass_name = st.selectbox("Search the pass", all_pass_names)
     pass_searched, _ = search_pass_by_name(pass_name)
+
+    return pass_searched
+
+
+def pypass_pass_search_by_distance(
+    bounds: list[float],
+) -> Optional[list[Pass]]:
+
+    pass_searched = search_pass_by_distance(bounds)
+
+    if len(pass_searched) == 0:
+        pass_searched = None
 
     return pass_searched
 
@@ -200,11 +211,65 @@ def pypass_app_gradient_plots(pass_searched: Pass) -> None:
         st.pyplot(pass_searched.plot_gradient(idx))
 
 
+def from_pass_list_to_pd(
+    pass_searched: list[Pass],
+) -> tuple[pd.DataFrame, int]:
+
+    info = dict()
+    num_paths = 0
+    for data in pass_searched:
+
+        for i in range(data.num_pathes):
+            info.update(
+                {
+                    f"{data.name} - {i+1}": {
+                        "path direction": data.path_names[i],
+                        "distance [km]": f"{data.total_distance[i]:.1f}",
+                        "elevation [m]": f"{data.total_elevation[i]}",
+                        "avg_grad [%]": f"{data.avg_grad[i]:.1f}",
+                        "link": data.gpts[str(i)]["url"],
+                    }
+                }
+            )
+            num_paths += 1
+
+    return pd.DataFrame(info).T, num_paths
+
+
 if __name__ == "__main__":
 
-    pass_searched = pypass_pass_search()
+    tab1, tab2, tab3 = st.tabs(["Name", "Distance", "Height"])
 
-    if pass_searched is not None:
-        pypass_app_title(pass_searched)
-        pypass_app_map_selector(pass_searched)
-        pypass_app_gradient_plots(pass_searched)
+    with tab1:
+        st.header("Search pass by name")
+
+        pass_searched = pypass_pass_search_by_name()
+        if pass_searched is not None:
+            pypass_app_title(pass_searched)
+            pypass_app_map_selector(pass_searched)
+            pypass_app_gradient_plots(pass_searched)
+
+    with tab2:
+        bounds = st.slider("Select search range.", 0, 40, (10, 30))
+        st.write(
+            f"Searching pass in range from {bounds[0]} km to {bounds[1]} km ..."
+        )
+
+        with st.spinner("Retrieving data ..."):
+            pass_searched = pypass_pass_search_by_distance(bounds)
+
+        if pass_searched is not None:
+            with st.spinner("Processing ..."):
+                pass_df, num_paths = from_pass_list_to_pd(pass_searched)
+            st.write(f"A total of {num_paths} climb paths are found.")
+
+            if st.button("Show the list"):
+                st.dataframe(pass_df)
+            else:
+                pass
+
+        else:
+            st.write("No result found! Please adjust the range.")
+
+    with tab3:
+        pass

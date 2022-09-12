@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from tinydb import TinyDB
 
+from pypass.app import from_pass_list_to_pd
 from pypass.passes import search_pass_by_distance
 from pypass.passes import search_pass_by_height
 from pypass.passes import search_pass_by_name
@@ -17,6 +18,7 @@ def test_pass_data() -> None:
     Pass, _ = search_pass_by_name("Mont Ventoux")
     Pass_elv = search_pass_by_height([1800, 2000])
     Pass_dist = search_pass_by_distance([10.0, 15.0])
+    df = from_pass_list_to_pd(Pass_dist)
 
     Pass_alt, _ = search_pass_by_name("Passo dello Stelvio")
     Pass_wrong, suggested = search_pass_by_name("passo Stelvio")

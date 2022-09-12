@@ -139,7 +139,7 @@ class Pass:
     @property
     def num_pathes(self) -> int:
         """Number pathes to the top."""
-        return len(self.geo_log)
+        return len(self.total_distance)
 
     @property
     def starts_from(self) -> list[list[float]]:
