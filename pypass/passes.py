@@ -398,7 +398,9 @@ def search_pass_by_distance(distance: list[float], db_loc: str) -> list[Pass]:
     return searched_pass
 
 
-def search_pass_by_elevation(elevation: list[float], db_loc: str) -> list[Pass]:
+def search_pass_by_elevation(
+    elevation: list[float], db_loc: str
+) -> list[Pass]:
 
     pass_db_loc = db_loc + PASS_DB
     db = TinyDB(pass_db_loc)
@@ -530,9 +532,15 @@ PASS_SEARCH_TYPE = ["name", "height", "elevation", "distance", "region"]
 
 SEARCH_FACTORIES = {
     "name": {"func": search_pass_by_name, "key_type": str},
-    "height": {"func": search_pass_by_height, "key_type": list},
-    "distance": {"func": search_pass_by_distance, "key_type": list},
-    "elevation": {"func": search_pass_by_elevation, "key_type": list},
+    "height": {"func": search_pass_by_height, "key_type": Union[list, tuple]},
+    "distance": {
+        "func": search_pass_by_distance,
+        "key_type": Union[list, tuple],
+    },
+    "elevation": {
+        "func": search_pass_by_elevation,
+        "key_type": Union[list, tuple],
+    },
     "region": {"func": search_pass_by_region, "key_type": str},
 }
 
@@ -560,7 +568,7 @@ class PassDB:
 
             else:
                 raise TypeError(
-                    f"PassDB: Non-supporting inpuy type: {type(key)}. Should be {input_type}."
+                    f"PassDB: Non-supporting input type: {type(key)}. Should be {input_type}."
                 )
 
         else:

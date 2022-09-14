@@ -34,7 +34,6 @@ Mountain pass can be searched by region, name, height, distance, and elevation g
 [Pass(name='Passo Pordoi', coord=[46.4875, 11.8122], ...), Pass(...), ...]
 >>> passdb.search([500, 1000], "elevation")
 [Pass(name='Passo Pordoi', coord=[46.4875, 11.8122], ...), Pass(...), ...]
-
 ```
 
 ## Features
