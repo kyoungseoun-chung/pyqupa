@@ -3,8 +3,9 @@
 import json
 from dataclasses import dataclass
 from difflib import get_close_matches
-from typing import Any
+from re import S
 from typing import Optional
+from typing import Union
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -15,10 +16,14 @@ from numpy.typing import NDArray
 from tinydb import Query
 from tinydb import TinyDB
 
-from .quaeldich import PASS_DB_LOC
-from .quaeldich import PASS_NAME_DB_LOC
+from .quaeldich import DB_LOC
+from .quaeldich import PASS_DB
+from .quaeldich import PASS_NAME_DB
 from .tools import decompose_digit
-from .tools import hex_to_rgb
+
+PASS_DB_LOC = DB_LOC + PASS_DB
+PASS_NAME_DB_LOC = DB_LOC + PASS_NAME_DB
+
 
 PX = 1 / mpl.rcParams["figure.dpi"]
 GRAD_FIG_WIDTH = 720 * PX
@@ -86,10 +91,6 @@ class Pass:
     """Pass region."""
     height: int
     """Height of the pass in meter."""
-    url: str
-    """URL of the pass"""
-    gpts: dict
-    """Geographical coordinate information. Latitude, Longitude, Elevation, Distance."""
     total_distance: list[float]
     """Total distance of each paths."""
     total_elevation: list[int]
@@ -104,6 +105,10 @@ class Pass:
     """Max elevation among the paths"""
     min_elevation: int
     """Min elevation among the paths"""
+    url: str
+    """URL of the pass"""
+    gpts: dict
+    """Geographical coordinate information. Latitude, Longitude, Elevation, Distance."""
 
     def __post_init__(self):
 
@@ -297,8 +302,8 @@ class Pass:
             )
             ax.set_yticks(np.arange(0, 3000, 500))
             ax.set_xticks(np.arange(0, 40, 5))
-            ax.set_ylim([self.elev_lower[idx], self.elev_upper[idx]])
-            ax.set_xlim([0, self.total_distance[idx]])
+            ax.set_ylim(self.elev_lower[idx], self.elev_upper[idx])
+            ax.set_xlim(0, self.total_distance[idx])
             ax.set_xlabel("distance [km]")
             ax.set_ylabel("elevation [m]")
 
@@ -356,9 +361,10 @@ def deg2rad(deg: float) -> float:
     return deg * np.pi / 180
 
 
-def search_pass_by_distance(distance: list[float]) -> list[Pass]:
+def search_pass_by_distance(distance: list[float], db_loc: str) -> list[Pass]:
 
-    db = TinyDB(PASS_DB_LOC)
+    pass_db_loc = db_loc + PASS_DB
+    db = TinyDB(pass_db_loc)
 
     # Sanity check
     _sanity_check_list_input(distance)
@@ -384,7 +390,188 @@ def search_pass_by_distance(distance: list[float]) -> list[Pass]:
 
         searched_pass.append(Pass(**_update_list_data(data, indicies)))
 
+    if len(searched_pass) == 0:
+        raise RuntimeError(
+            f"Pass: No pass data searched matching distance range: {distance}"
+        )
+
     return searched_pass
+
+
+def search_pass_by_elevation(
+    elevation: list[float], db_loc: str
+) -> list[Pass]:
+
+    pass_db_loc = db_loc + PASS_DB
+    db = TinyDB(pass_db_loc)
+
+    # Sanity check
+    _sanity_check_list_input(elevation)
+
+    from_db = db.search(
+        (
+            (Query().min_elevation >= elevation[0])
+            & (Query().min_elevation <= elevation[1])
+        )
+        | (
+            (Query().max_elevation >= elevation[0])
+            & (Query().max_elevation <= elevation[1])  # type: ignore
+        )
+    )
+
+    searched_pass = []
+
+    for data in from_db:
+        dist_list = np.asarray(data["total_elevation"])
+        indicies = np.argwhere(
+            np.logical_and(dist_list > elevation[0], dist_list < elevation[1])
+        )
+
+        searched_pass.append(Pass(**_update_list_data(data, indicies)))
+
+    if len(searched_pass) == 0:
+        raise RuntimeError(
+            f"Pass: No pass data searched matching elevation range: {elevation}"
+        )
+
+    return searched_pass
+
+
+def search_pass_by_height(height: list[float], db_loc: str) -> list[Pass]:
+    """Search pass by its height (heightest point).
+
+    Args:
+        elevation (list[int]): lower and upper bound of passes to be searched.
+
+    Returns:
+        list[Pass]: list of searched passes.
+    """
+
+    pass_db_loc = db_loc + PASS_DB
+    db = TinyDB(pass_db_loc)
+
+    _sanity_check_list_input(height)
+
+    from_db = db.search(
+        (Query().height > height[0]) & (Query().height < height[1])
+    )
+
+    searched_pass = [Pass(**data) for data in from_db]
+
+    if len(searched_pass) == 0:
+        raise RuntimeError(
+            f"Pass: No pass data searched matching height range: {height}"
+        )
+
+    return searched_pass
+
+
+def search_pass_by_region(region: str, db_loc: str) -> list[Pass]:
+
+    region = region.lower()
+
+    pass_db_loc = db_loc + PASS_DB
+    db = TinyDB(pass_db_loc)
+
+    from_db = db.search(Query().region == region)
+
+    searched_pass = [Pass(**data) for data in from_db]
+
+    if len(searched_pass) == 0:
+
+        raise RuntimeError(
+            f"Pass: No pass data searched matching region: {region}"
+        )
+
+    return searched_pass
+
+
+def search_pass_by_name(name: str, db_loc: str) -> list[Pass]:
+    """Search pass by its name. First, it searches `db.names`. In the case of no matching name is found, check `db.alts` instead. Also, if there is a typo in the given name input, this function will return non-empty list contains name suggestions. Suggestion is made by using `difflib.get_close_mathces`.
+
+    Args:
+        name (str): name of a pass
+
+    Returns:
+        list[Pass]: searched pass. If there is no matching name, return None and non-empty name suggestion.
+    """
+
+    pass_db_loc = db_loc + PASS_DB
+    pass_name_db_loc = db_loc + PASS_NAME_DB
+
+    db = TinyDB(pass_db_loc)
+    db_names = TinyDB(pass_name_db_loc)
+
+    # There should be only one pass corresponding to the given name.
+    from_db = db.get(Query().name == name)
+
+    if from_db is None:
+
+        # Try with alternative name
+        from_db = db.get(Query().alt == name)
+
+        if from_db is None:
+            # Check levenstein distance of pass names
+            all_names = db_names.all()[0]["alts"] + db_names.all()[0]["names"]
+            suggested = get_close_matches(name, all_names)
+
+            raise NameError(
+                f"The given name ({name}) is not in our database. Did you mean {suggested}?"
+            )
+
+        else:
+            pass_searched = [Pass(**from_db)]
+
+    else:
+        pass_searched = [Pass(**from_db)]
+
+    return pass_searched
+
+
+PASS_SEARCH_TYPE = ["name", "height", "elevation", "distance", "region"]
+
+SEARCH_FACTORIES = {
+    "name": {"func": search_pass_by_name, "key_type": str},
+    "height": {"func": search_pass_by_height, "key_type": list},
+    "distance": {"func": search_pass_by_distance, "key_type": list},
+    "elevation": {"func": search_pass_by_elevation, "key_type": list},
+    "region": {"func": search_pass_by_region, "key_type": str},
+}
+
+
+@dataclass
+class PassDB:
+
+    db_loc: str = DB_LOC
+    """Database location"""
+
+    def search(
+        self, key: Union[str, list[int], list[float]], search_type: str
+    ) -> list[Pass]:
+
+        search_type = search_type.lower()
+
+        if search_type in PASS_SEARCH_TYPE:
+
+            search_func = SEARCH_FACTORIES[search_type]["func"]
+            input_type = SEARCH_FACTORIES[search_type]["key_type"]
+
+            if isinstance(key, input_type):
+
+                pass_searched = search_func(key, self.db_loc)
+
+            else:
+                raise TypeError(
+                    f"PassDB: Non-supporting inpuy type: {type(key)}. Should be {input_type}."
+                )
+
+        else:
+
+            raise TypeError(
+                f"PassDB: Non-supporting search type: {search_type}. Should be one of {PASS_SEARCH_TYPE}."
+            )
+
+        return pass_searched
 
 
 def _update_list_data(data: dict, indicies: NDArray[np.int64]) -> dict:
@@ -418,33 +605,6 @@ def _update_list_data(data: dict, indicies: NDArray[np.int64]) -> dict:
     return data
 
 
-def search_pass_by_elevation(elevation: list[int]) -> list[Pass]:
-
-    # Sanity check
-    _sanity_check_list_input(elevation)
-
-
-def search_pass_by_height(height: list[int]) -> list[Pass]:
-    """Search pass by its height (heightest point).
-
-    Args:
-        elevation (list[int]): lower and upper bound of passes to be searched.
-
-    Returns:
-        list[Pass]: list of searched passes.
-    """
-
-    db = TinyDB(PASS_DB_LOC)
-
-    _sanity_check_list_input(height)
-
-    from_db = db.search(
-        (Query().height > height[0]) & (Query().height < height[1])
-    )
-
-    return [Pass(**data) for data in from_db]
-
-
 def _sanity_check_list_input(inputs: list[float] | list[int]) -> None:
 
     # Sanity check
@@ -457,54 +617,7 @@ def _sanity_check_list_input(inputs: list[float] | list[int]) -> None:
     ), "Pass: bounds should be increasing order -> [lower, upper]."
 
 
-def search_pass_by_region(region: str) -> list[Pass]:
-    pass
-
-
-def search_pass_by_name(
-    name: str,
-) -> tuple[Optional[Pass], Optional[list[str]]]:
-    """Search pass by its name. First, it searches `db.names`. In the case of no matching name is found, check `db.alts` instead. Also, if there is a typo in the given name input, this function will return non-empty list contains name suggestions. Suggestion is made by using `difflib.get_close_mathces`.
-
-    Args:
-        name (str): name of a pass
-
-    Returns:
-        tuple[Optional[Pass], Optional[str]]: searched pass. If there is no matching name, return None and non-empty name suggestion.
-    """
-
-    db = TinyDB(PASS_DB_LOC)
-    db_names = TinyDB(PASS_NAME_DB_LOC)
-
-    # There should be only one pass corresponding to the given name.
-    from_db = db.get(Query().name == name)
-
-    if from_db is None:
-
-        # Try with alternative name
-        from_db = db.get(Query().alt == name)
-
-        if from_db is None:
-            # Check levenstein distance of pass names
-            all_names = db_names.all()[0]["alts"] + db_names.all()[0]["names"]
-            suggested = get_close_matches(name, all_names)
-
-            print(
-                f"The given name ({name}) is not in our database. Did you mean {suggested}?"
-            )
-            pass_searched = None
-        else:
-            pass_searched = Pass(**from_db)
-            suggested = None
-
-    else:
-        pass_searched = Pass(**from_db)
-        suggested = None
-
-    return pass_searched, suggested
-
-
-def get_gpt_data(gpts: dict[str, str]) -> list[NDArray[np.float64]]:
+def get_gpt_data(gpts: dict[str, dict[str, str]]) -> list[NDArray[np.float64]]:
     """Obtain latitude, longitude, height, and distance information (GPT data) from the path ids.
 
     Args:

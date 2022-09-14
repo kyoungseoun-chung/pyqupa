@@ -1,30 +1,49 @@
 #!/usr/bin/env python3
-from tinydb import TinyDB
+import pytest
 
 from pypass.app import from_pass_list_to_pd
-from pypass.passes import search_pass_by_distance
-from pypass.passes import search_pass_by_height
-from pypass.passes import search_pass_by_name
-from pypass.passes import search_pass_by_region
+from pypass.passes import PassDB
 from pypass.quaeldich import extract_pass_data
 from pypass.quaeldich import get_total_pass_count
-from pypass.quaeldich import PASS_NAME_DB_LOC
+
+
+def test_data_extraction() -> None:
+    counts = get_total_pass_count()
+
+    assert counts == 7794
+
+    data = extract_pass_data(
+        db_overwrite=False, db_loc="./tests/test_db/", pass_counts=5
+    )
+
+    assert len(data) == 5
 
 
 def test_pass_data() -> None:
 
-    counts = get_total_pass_count()
-    res = extract_pass_data(db_overwrite=False, pass_counts=5)
-    Pass, _ = search_pass_by_name("Mont Ventoux")
-    Pass_elv = search_pass_by_height([1800, 2000])
-    Pass_dist = search_pass_by_distance([10.0, 15.0])
-    df = from_pass_list_to_pd(Pass_dist)
+    passdb = PassDB("./tests/test_db/")
+    Pass = passdb.search("Mont Ventoux", "name")
+    assert Pass[0].name == "Mont Ventoux"
 
-    Pass_alt, _ = search_pass_by_name("Passo dello Stelvio")
-    Pass_wrong, suggested = search_pass_by_name("passo Stelvio")
+    # Search with alternative anme
+    Pass_alt = passdb.search("Passo dello Stelvio", "name")
+    assert Pass_alt[0].name == "Stilfser Joch"
 
-    print(Pass)
+    Pass_reg = passdb.search("italien alpen", "region")
+    assert len(Pass_reg) == 3
+    assert Pass_reg[0].region == "italien alpen"
 
+    Pass_hei = passdb.search([1800, 2000], "height")
+    assert len(Pass_hei) == 1
+    assert Pass_hei[0].height == 1909
 
-if __name__ == "__main__":
-    test_pass_data()
+    Pass_dist = passdb.search([10.0, 15.0], "distance")
+    assert len(Pass_dist) == 2
+    assert Pass_dist[0].total_distance == [12.5]
+
+    Pass_elev = passdb.search([500, 1000], "elevation")
+    assert len(Pass_elev) == 2
+    assert Pass_elev[0].total_elevation == [647, 774]
+
+    with pytest.raises(Exception):
+        passdb.search("Mont Vento", "name")

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Retrieve pass data from https://www.quaeldich.de/. """
+from importlib.resources import path
 from pathlib import Path
 from typing import Optional
 from unicodedata import combining
@@ -14,8 +15,9 @@ from rich.progress import track
 from tinydb import Query
 from tinydb import TinyDB
 
-PASS_DB_LOC = "./pypass/db/passes.json"
-PASS_NAME_DB_LOC = "./pypass/db/pass_names.json"
+DB_LOC = "./pypass/db/"
+PASS_DB = "passes.json"
+PASS_NAME_DB = "pass_names.json"
 
 BASE_URL = "https://www.quaeldich.de"
 BASE_PASS_URL = "https://www.quaeldich.de/paesse/"
@@ -70,13 +72,19 @@ def get_total_pass_count() -> int:
     r = requests.get(BASE_PASS_URL)
     soup = bs(r.text, "lxml")
 
-    total_counts = int(soup.find(id=html_id).text)
+    total_counts = soup.find(id=html_id)
+
+    if total_counts is not None:
+        total_counts = int(total_counts.text)
+    else:
+        raise RuntimeError(f"Quaeldich: Total pass count is not found!")
 
     return total_counts
 
 
 def extract_pass_data(
     db_overwrite: bool = False,
+    db_loc: str = DB_LOC,
     pass_counts: Optional[int] = None,
 ) -> list[dict]:
     """Get pass data from quaeldich website.
@@ -103,13 +111,15 @@ def extract_pass_data(
     if pass_counts is None:
         pass_counts = get_total_pass_count()
 
+    db_loc_full = db_loc + PASS_DB
+    name_db_loc_full = db_loc + PASS_NAME_DB
     if not db_overwrite:
         # Remove all databases
-        if Path(PASS_NAME_DB_LOC).exists():
-            Path(PASS_NAME_DB_LOC).unlink()
+        if Path(name_db_loc_full).exists():
+            Path(name_db_loc_full).unlink()
 
-        if Path(PASS_DB_LOC).exists():
-            Path(PASS_DB_LOC).unlink()
+        if Path(db_loc_full).exists():
+            Path(db_loc_full).unlink()
 
     with Progress(TEXT_COLUMN, TIME_COLUMN) as progress:
 
@@ -128,90 +138,101 @@ def extract_pass_data(
     all_names = []
     all_alts = []
 
-    for li in track(
-        html_pass_list,
-        description=f"[cyan]Processing {len(html_pass_list)} pass data...",
-    ):
-        row = li.find("div", {"class": "row"})
-        all_divs = row.findAll("div")
-        all_links = [href["href"] for href in row.findAll("a", href=True)]
-        pass_url = BASE_URL + all_links[0]
+    total_list = len(html_pass_list)
+    with Progress(TEXT_COLUMN, TIME_COLUMN) as progress:
 
-        # Get geotraphical region of the pass
-        pass_region = []
-        for link in all_links:
-            if link.find("regionen") >= 0:
-                pass_region.append(
-                    link.replace(BASE_URL + "/regionen/", "")
-                    .replace("/paesse/", "")
-                    .capitalize()
-                )
-        pass_region = " ".join(pass_region)
+        task = progress.add_task(
+            f"[cyan]Processing data... # 0/{total_list}", total=total_list
+        )
 
-        # Clean up extracted text
+        for idx, li in enumerate(html_pass_list):
 
-        data = [
-            (div.get_text())
-            .replace("\n", "")
-            .replace("\r", "")
-            .replace("quaeldich-Reise", "")
-            .strip()
-            for div in all_divs
-        ]
+            row = li.find("div", {"class": "row"})
+            all_divs = row.findAll("div")
+            all_links = [href["href"] for href in row.findAll("a", href=True)]
+            pass_url = BASE_URL + all_links[0]
 
-        # Extract brief path info and translate german to english
-        all_from_to = []
-        for ft in data[6::3]:
-            _, ft = _convert_german(ft)
-            all_from_to.append(ft)
+            # Get geotraphical region of the pass
+            pass_region = []
+            for link in all_links:
+                if link.find("regionen") >= 0:
+                    pass_region.append(
+                        link.replace(BASE_URL + "/regionen/", "")
+                        .replace("/paesse/", "")
+                        .capitalize()
+                    )
+            pass_region = " ".join(pass_region)
 
-        # Obtain URLs for each path and path ids used in quaeldich website
-        pass_coord, pass_url = _get_pass_coord(data[0])
-        path_urls = _get_path_url(pass_url)
-        path_info = _get_path_info(pass_url)
-        path_ids = _get_path_ids(path_urls)
-        path_gpt_js = _get_gpt_data_js(path_ids)
+            # Clean up extracted text
 
-        # Store data in the dictionary
-        gpt_dict = {}
-        for i, (gjs, ft, purl) in enumerate(
-            zip(path_gpt_js, all_from_to, path_urls)
-        ):
-            gpt_dict.update({i: {"name": ft, "url": purl, "gpt": gjs}})
+            data = [
+                (div.get_text())
+                .replace("\n", "")
+                .replace("\r", "")
+                .replace("quaeldich-Reise", "")
+                .strip()
+                for div in all_divs
+            ]
 
-        pass_data = {
-            "name": data[0],
-            "coord": pass_coord,
-            "alt": data[3],
-            "region": pass_region,
-            "height": int(data[2].strip(" m")),
-            "url": pass_url,
-            "gpts": gpt_dict,
-            "total_distance": path_info["distance"],
-            "total_elevation": path_info["elevation"],
-            "avg_grad": path_info["gradient"],
-            "max_distance": max(path_info["distance"]),
-            "min_distance": min(path_info["distance"]),
-            "max_elevation": max(path_info["elevation"]),
-            "min_elevation": min(path_info["elevation"]),
-        }
+            # Extract brief path info and translate german to english
+            all_from_to = []
+            for ft in data[6::3]:
+                _, ft = _convert_german(ft)
+                all_from_to.append(ft)
 
-        db = TinyDB(PASS_DB_LOC)
-        if db_overwrite:
-            searched = db.search(Query().name == data[0])
-            if len(searched) > 0:
-                db.update(pass_data)
+            # Obtain URLs for each path and path ids used in quaeldich website
+            pass_coord, pass_url = _get_pass_coord(data[0])
+            path_urls = _get_path_url(pass_url)
+            path_info = _get_path_info(pass_url)
+            path_ids = _get_path_ids(path_urls)
+            path_gpt_js = _get_gpt_data_js(path_ids)
+
+            # Store data in the dictionary
+            gpt_dict = {}
+            for i, (gjs, ft, purl) in enumerate(
+                zip(path_gpt_js, all_from_to, path_urls)
+            ):
+                gpt_dict.update({i: {"name": ft, "url": purl, "gpt": gjs}})
+
+            pass_data = {
+                "name": data[0],
+                "coord": pass_coord,
+                "alt": data[3],
+                "region": pass_region.lower(),
+                "height": int(data[2].strip(" m")),
+                "total_distance": path_info["distance"],
+                "total_elevation": path_info["elevation"],
+                "avg_grad": path_info["gradient"],
+                "max_distance": max(path_info["distance"]),
+                "min_distance": min(path_info["distance"]),
+                "max_elevation": max(path_info["elevation"]),
+                "min_elevation": min(path_info["elevation"]),
+                "url": pass_url,
+                "gpts": gpt_dict,
+            }
+
+            db = TinyDB(db_loc_full)
+            if db_overwrite:
+                searched = db.search(Query().name == data[0])
+                if len(searched) > 0:
+                    db.update(pass_data, Query().name == data[0])
+                else:
+                    db.insert(pass_data)
             else:
+                # Remove and save
                 db.insert(pass_data)
-        else:
-            # Remove and save
-            db.insert(pass_data)
 
-        all_alts.append(data[3])
-        all_names.append(data[0])
-        all_passes.append(pass_data)
+            all_alts.append(data[3])
+            all_names.append(data[0])
+            all_passes.append(pass_data)
 
-    db = TinyDB(PASS_NAME_DB_LOC)
+            progress.update(
+                task,
+                description=f"[cyan]Processing data... # {idx+1}/{total_list}",
+                advance=1,
+            )
+
+    db = TinyDB(name_db_loc_full)
     if db_overwrite:
         db.update({"names": all_names, "alts": all_alts})
     else:
@@ -280,6 +301,11 @@ def _get_path_ids(path_urls: list[str]) -> list[str]:
         if img["src"].find("gradient") >= 0
     ]
 
+    if len(path_urls) == 0:
+        raise RuntimeError(
+            f"Quaeldich: Path data-id cannot be found! Check input path_url.\n{path_urls}"
+        )
+
     return path_ids
 
 
@@ -292,10 +318,8 @@ def _get_path_url(pass_url: str) -> list[str]:
     Returns:
         list[str]: list of urls of the pass
     """
-    all_url_links = (
-        bs(requests.get(pass_url).text, "lxml")
-        .find("div", {"class": "panel-group"})
-        .find_all("a", href=True)
+    all_url_links = bs(requests.get(pass_url).text, "lxml").find_all(
+        "a", href=True
     )
 
     path_urls = [
@@ -303,6 +327,11 @@ def _get_path_url(pass_url: str) -> list[str]:
         for link in all_url_links
         if link["href"].find("/profile/") >= 0
     ]
+
+    if len(path_urls) == 0:
+        raise RuntimeError(
+            f"Quaeldich: Path url cannot be found! Check input pass_url.\n{pass_url}"
+        )
 
     return path_urls
 
@@ -316,26 +345,29 @@ def _get_path_info(pass_url: str) -> dict:
     Returns:
         list[str]: list of urls of the pass
     """
-    all_info = (
-        bs(requests.get(pass_url).text, "lxml")
-        .find("div", {"class": "panel-group"})
-        .find_all("small")
-    )
+    all_info = bs(requests.get(pass_url).text, "lxml").find_all("small")
 
     distance = []
     elevation = []
     gradient = []
 
     for info in all_info:
-        data_extracted = info.text.replace(" ", "").split("|")
-        distance.append(
-            float(data_extracted[0].replace(",", ".").replace("km", ""))
-        )
-        elevation.append(
-            int(data_extracted[1].replace(",", ".").replace("Hm", ""))
-        )
-        gradient.append(
-            float(data_extracted[2].replace(",", ".").replace("%", ""))
+
+        if "km" in info.text and "Hm" in info.text and "%" in info.text:
+            data_extracted = info.text.replace(" ", "").split("|")
+            distance.append(
+                float(data_extracted[0].replace(",", ".").replace("km", ""))
+            )
+            elevation.append(
+                int(data_extracted[1].replace(",", ".").replace("Hm", ""))
+            )
+            gradient.append(
+                float(data_extracted[2].replace(",", ".").replace("%", ""))
+            )
+
+    if len(distance) == 0 or len(elevation) == 0 or len(gradient) == 0:
+        raise RuntimeError(
+            f"Quaeldich: Basic information (km, Hm, and %) cannot be found! Check input pass_url:\n{pass_url}"
         )
 
     return {

@@ -29,14 +29,14 @@ except KeyError:
     MAPBOX_API_KEY = dotenv_values(".env")["MAPBOX_API_KEY"]
 
 from pypass.passes import search_pass_by_name, Pass, search_pass_by_distance
-from pypass.quaeldich import PASS_NAME_DB_LOC
+from pypass.quaeldich import DB_LOC, PASS_NAME_DB
 
 st.set_page_config(layout="centered", page_title="Pass Finder", page_icon="⛰")
 
 
 def pypass_pass_search_by_name() -> Optional[Pass]:
 
-    db_names = TinyDB(PASS_NAME_DB_LOC)
+    db_names = TinyDB(DB_LOC + PASS_NAME_DB)
 
     # Find all pass name including alternative name
     all_pass_names = db_names.all()[0]["names"]
