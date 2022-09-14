@@ -398,9 +398,7 @@ def search_pass_by_distance(distance: list[float], db_loc: str) -> list[Pass]:
     return searched_pass
 
 
-def search_pass_by_elevation(
-    elevation: list[float], db_loc: str
-) -> list[Pass]:
+def search_pass_by_elevation(elevation: list[float], db_loc: str) -> list[Pass]:
 
     pass_db_loc = db_loc + PASS_DB
     db = TinyDB(pass_db_loc)
@@ -605,7 +603,7 @@ def _update_list_data(data: dict, indicies: NDArray[np.int64]) -> dict:
     return data
 
 
-def _sanity_check_list_input(inputs: list[float] | list[int]) -> None:
+def _sanity_check_list_input(inputs: Union[list[float], list[int]]) -> None:
 
     # Sanity check
     assert (
