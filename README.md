@@ -81,11 +81,16 @@ You can run GUI by typing following command:
 
 Or access via [URL](https://kyoungseoun-chung-pypass-pypassapp-xwr7oa.streamlitapp.com/)
 
+#### Demos:
+
+* Search by name:
+![search by name](.pypass/../pypass/assets/screenshots/search_by_name.png)
+* Search by distance:
+![search by name](.pypass/../pypass/assets/screenshots/search_by_distance.png)
 
 ## WIP:
 - Pass data
     - [ ] Elaborate gradient computation.
-    - [ ] Search pass data by path distance and elevation gain.
 - GUI using Streamlit.
     - [ ] Better gradient profile.
     - [ ] Change plot engine from matplotlib to plotly.
