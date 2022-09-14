@@ -4,6 +4,8 @@ import json
 from dataclasses import dataclass
 from difflib import get_close_matches
 from re import S
+from typing import get_args
+from typing import get_origin
 from typing import Optional
 from typing import Union
 
@@ -562,7 +564,10 @@ class PassDB:
             search_func = SEARCH_FACTORIES[search_type]["func"]
             input_type = SEARCH_FACTORIES[search_type]["key_type"]
 
-            if isinstance(key, input_type):
+            if (
+                isinstance(key, get_args(input_type))
+                and get_origin(input_type) is Union
+            ) or isinstance(key, input_type):
 
                 pass_searched = search_func(key, self.db_loc)
 

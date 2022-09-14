@@ -79,7 +79,7 @@ def pypass_app_title(pass_searched: Pass) -> Any:
     ):
         c.metric(
             f"{idx+1}: {n}",
-            value=f"{d/1000: .1f}km",
+            value=f"{d: .1f}km",
             delta=f"{e:.1f}m, {g:.1f} %",
         )
 
@@ -182,7 +182,7 @@ def pypass_app_map_folium(pass_searched: Pass) -> None:
             path[:, :2], color=color, weight=4, opacity=0.7
         ).add_to(m)
 
-    st_folium(m, width=725)
+    st_folium(m)
 
 
 def pypass_app_map_selector(pass_searched: Pass) -> None:

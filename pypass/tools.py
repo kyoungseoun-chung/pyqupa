@@ -5,7 +5,7 @@ from typing import Optional
 import numpy as np
 
 
-def hex_to_rgb(hex: str, opacity: Optional[int] = None) -> list[int, int, int]:
+def hex_to_rgb(hex: str, opacity: Optional[float] = None) -> list[int]:
     """Convert hex code to rgb"""
     hex = hex.lstrip("#")
     if opacity is not None:
