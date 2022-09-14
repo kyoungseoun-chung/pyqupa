@@ -3,6 +3,8 @@
 
 A Python interface to access data in [quaeldich.de](https://www.quaeldich.de).
 
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://kyoungseoun-chung-pypass-pypassapp-xwr7oa.streamlitapp.com/)
+
 ## Installation
 
 Install from source:
@@ -30,6 +32,9 @@ Mountain pass can be searched by region, name, height, distance, and elevation g
 [Pass(name='Mont Ventoux', coord=[44.1736, 5.27879], ...), Pass(...), ...]
 >>> passdb.search([10.0, 15.0], "distance")
 [Pass(name='Passo Pordoi', coord=[46.4875, 11.8122], ...), Pass(...), ...]
+>>> passdb.search([500, 1000], "elevation")
+[Pass(name='Passo Pordoi', coord=[46.4875, 11.8122], ...), Pass(...), ...]
+
 ```
 
 ## Features
@@ -68,10 +73,14 @@ NameError: The given name (Mont Ventox) is not in our database. Did you mean ['M
 
 ### GUI using [steamlit](https://streamlit.io)
 
+WIP!
+
 You can run GUI by typing following command:
 ```python
 >>> python -m streamlit run pypass/app.py
 ```
+
+Or access via [URL](https://kyoungseoun-chung-pypass-pypassapp-xwr7oa.streamlitapp.com/)
 
 
 ## WIP:
