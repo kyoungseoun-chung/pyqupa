@@ -22,19 +22,17 @@ COLOR_CODE = cycle(
 
 
 try:
-    MAPBOX_API_KEY = os.environ.get("MAPBOX_API_KEY")
-    if MAPBOX_API_KEY == "":
-        raise KeyError()
-except KeyError:
     MAPBOX_API_KEY = dotenv_values(".env")["MAPBOX_API_KEY"]
+except NameError:
+    MAPBOX_API_KEY = st.secrets["MAPBOX_API_KEY"]
 
-from pypass.passes import search_pass_by_name, Pass, search_pass_by_distance
+from pypass.passes import PassDB, Pass
 from pypass.quaeldich import DB_LOC, PASS_NAME_DB
 
 st.set_page_config(layout="centered", page_title="Pass Finder", page_icon="⛰")
 
 
-def pypass_pass_search_by_name() -> Optional[Pass]:
+def pypass_pass_search_by_name() -> list[Pass]:
 
     db_names = TinyDB(DB_LOC + PASS_NAME_DB)
 
@@ -43,19 +41,16 @@ def pypass_pass_search_by_name() -> Optional[Pass]:
     all_pass_names += list(filter(None, db_names.all()[0]["alts"]))
 
     pass_name = st.selectbox("Search the pass", all_pass_names)
-    pass_searched, _ = search_pass_by_name(pass_name)
+    pass_searched = PassDB().search(pass_name, "name")
 
     return pass_searched
 
 
 def pypass_pass_search_by_distance(
     bounds: list[float],
-) -> Optional[list[Pass]]:
+) -> list[Pass]:
 
-    pass_searched = search_pass_by_distance(bounds)
-
-    if len(pass_searched) == 0:
-        pass_searched = None
+    pass_searched = PassDB().search(bounds, "distance")
 
     return pass_searched
 
@@ -183,9 +178,9 @@ def pypass_app_map_folium(pass_searched: Pass) -> None:
 
         folium.Marker(stp, icon=icon_start).add_to(m)
 
-        folium.PolyLine(
-            path[:, :2], color=color, weight=4, opacity=0.7
-        ).add_to(m)
+        folium.PolyLine(path[:, :2], color=color, weight=4, opacity=0.7).add_to(
+            m
+        )
 
     st_folium(m, width=725)
 
@@ -245,9 +240,9 @@ if __name__ == "__main__":
 
         pass_searched = pypass_pass_search_by_name()
         if pass_searched is not None:
-            pypass_app_title(pass_searched)
-            pypass_app_map_selector(pass_searched)
-            pypass_app_gradient_plots(pass_searched)
+            pypass_app_title(pass_searched[0])
+            pypass_app_map_selector(pass_searched[0])
+            pypass_app_gradient_plots(pass_searched[0])
 
     with tab2:
         bounds = st.slider("Select search range.", 0, 40, (10, 30))
