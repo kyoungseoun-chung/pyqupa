@@ -17,30 +17,31 @@ We use `poetry` to manage all dependencies.
 [Quaeldich.de](https://www.quaeldich.de) stores all mountain pass data in json files with unique data-ids. For example, **Mont Ventoux** approaching from **Bédoin** has geopositioning data (latitude, longitude, elevation, and distance) identified by `data-id=127_189`. Therefore, data can be accessed via the URL `https://www.quaeldich.de/qdtp/anfahrten/127_189.json`. We scraped all pass data URLs from the website and saved them in `pypass/db/passes.json`. Whenever you attempt to search for pass information, the code will first look for the URL and process data for you.
 
 
-## Usage
+## Basic usage
 
-Mountain pass can be searched by region, name, height, distance, and elevation gain.
+**Warning**: search by region is not working properly!
 
 ```python
 >>> from pypass.passees import PassDB
 >>> passdb = PassDB()
 >>> passdb.search("Mont Ventoux", "name")
+# List of a Pass with length == 1
 [Pass(name='Mont Ventoux', coord=[44.1736, 5.27879], ...)]
->>> passdb.search("italien alpen", "region")
-[Pass(name='Stilfser Joch', coord=[46.5288, 10.4528], ...), Pass(...), ...]
+>>> passdb.search("italien alpen", "region") # Not working at this point...
 >>> passdb.search([1800, 2000], "height")
-[Pass(name='Mont Ventoux', coord=[44.1736, 5.27879], ...), Pass(...), ...]
 >>> passdb.search([10.0, 15.0], "distance")
-[Pass(name='Passo Pordoi', coord=[46.4875, 11.8122], ...), Pass(...), ...]
 >>> passdb.search([500, 1000], "elevation")
-[Pass(name='Passo Pordoi', coord=[46.4875, 11.8122], ...), Pass(...), ...]
+# List of Passes matching criteria either "region", "height", "distance", or "elevation".
+[Pass(name='Mont Ventoux', coord=[44.1736, 5.27879], ...), Pass(...), ...]
 ```
 
 ## Features
 
-### Search mountain pass data
+### Pass data
 
-- It contains all paths to the top including information regarding distance, elevation, and gradient.
+- You can search Pass data by region, name, height, distance, and elevation gain.
+
+- Each `Pass` class contains all paths to the top including information regarding distance, elevation, and gradient.
 ```python
 >>> from pypass.passees import PassDB
 >>> passdb = PassDB()
@@ -91,6 +92,7 @@ Or access via [URL](https://kyoungseoun-chung-pypass-pypassapp-xwr7oa.streamlita
 ## WIP:
 - Pass data
     - [ ] Elaborate gradient computation.
+    - [ ] Fix search by region.
 - GUI using Streamlit.
     - [ ] Better gradient profile.
     - [ ] Change plot engine from matplotlib to plotly.

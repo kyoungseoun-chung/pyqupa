@@ -152,6 +152,8 @@ def extract_pass_data(
             all_links = [href["href"] for href in row.findAll("a", href=True)]
             pass_url = BASE_URL + all_links[0]
 
+            # TODO: Split country part and region part
+            # TODO: Restrieve all regional data in quaeldich website
             # Get geotraphical region of the pass
             pass_region = []
             for link in all_links:
