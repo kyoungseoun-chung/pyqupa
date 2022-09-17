@@ -11,6 +11,7 @@ from bs4 import BeautifulSoup as bs
 from rich.progress import Progress
 from rich.progress import TextColumn
 from rich.progress import TimeElapsedColumn
+from rich.progress import TimeRemainingColumn
 from tinydb import Query
 from tinydb import TinyDB
 
@@ -44,6 +45,7 @@ LATIN = "ä  æ  ǽ  đ ð ƒ ħ ı ł ø ǿ ö  œ  ß  ŧ ü ß"
 ASCII = "ae ae ae d d f h i l o o oe oe ss t ue ss"
 
 
+TIME_REMAIN_COLUMN = TimeRemainingColumn()
 TIME_COLUMN = TimeElapsedColumn()
 TEXT_COLUMN = TextColumn("{task.description}")
 
@@ -141,7 +143,7 @@ def extract_pass_data(
     all_alts = []
 
     total_list = len(html_pass_list)
-    with Progress(TEXT_COLUMN, TIME_COLUMN) as progress:
+    with Progress(TEXT_COLUMN, TIME_COLUMN, TIME_REMAIN_COLUMN) as progress:
 
         task = progress.add_task(
             f"[cyan]Processing data... # 0/{total_list}", total=total_list
@@ -185,7 +187,7 @@ def extract_pass_data(
                 all_from_to.append(ft)
 
             # Obtain URLs for each path and path ids used in quaeldich website
-            pass_coord, pass_url = _get_pass_coord(data[0])
+            pass_coord = _get_pass_coord(pass_url)
             path_urls = _get_path_url(pass_url)
             path_info = _get_path_info(pass_url)
             path_ids = _get_path_ids(path_urls)
@@ -245,25 +247,16 @@ def extract_pass_data(
     return all_passes
 
 
-def _get_pass_coord(pass_name: str) -> tuple[list[float], str]:
-
-    url_pass_name = pass_name.lower().replace(" ", "-")
-
-    url_pass_name = remove_diacritics(url_pass_name)
-
-    # for gv, ev in GERMAN_SPECIAL_CHARACTOR_CONVERTER.items():
-    #     url_pass_name = url_pass_name.replace(gv, ev)
-
-    url = BASE_PASS_URL + url_pass_name
+def _get_pass_coord(pass_url: str) -> list[float]:
 
     coord_string = (
-        bs(requests.get(url).text, "lxml")
+        bs(requests.get(pass_url).text, "lxml")
         .find("div", {"class": "coords"})
         .find("a", {"class": "external"})
         .text
     ).split(",")
 
-    return [float(coord) for coord in coord_string], url
+    return [float(coord) for coord in coord_string]
 
 
 def _get_gpt_data_js(path_ids) -> list[str]:
