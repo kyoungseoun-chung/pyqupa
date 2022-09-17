@@ -37,7 +37,24 @@ We use `poetry` to manage all dependencies.
 
 ## Features
 
-### Pass data
+### Extract data
+
+- You can use cli command to extract data from quaeldich.de.
+    - You need two arguments `-e` and `-d`.
+    - If you set give 0 for `-e`, it will extract all data registered in quaeldich.de.
+    - If you don't set `-d` option, it will save db to `pypass/db/`.
+    - DB doesn't contain geopositioning data. Only relevant URLs to be processed later on.
+
+- Mac OS or Linux
+    ```zsh
+    python -m pypass -e NUMBER_OF_PASS_TO_BE_EXTRACTED -d DIRECTORY_TO_BE_SAVE_DB
+    ```
+- Windows
+    ```zsh
+    py -m pypass -e NUMBER_OF_PASS_TO_BE_EXTRACTED -d DIRECTORY_TO_BE_SAVE_DB
+    ```
+
+### Search and access Pass data
 
 - You can search Pass data by region, name, height, distance, and elevation gain.
 
@@ -71,13 +88,11 @@ NameError: The given name (Mont Ventox) is not in our database. Did you mean ['M
 ```
 
 
-### GUI using [steamlit](https://streamlit.io)
+### Running GUI
 
-WIP!
-
-You can run GUI by typing following command:
-```python
->>> python -m streamlit run pypass/app.py
+We created GUI using [steamlit](https://streamlit.io). You can run GUI by typing following command:
+```zsh
+python -m streamlit run pypass/app.py
 ```
 
 Or access via [URL](https://kyoungseoun-chung-pypass-pypassapp-xwr7oa.streamlitapp.com/)
