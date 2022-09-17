@@ -1,16 +1,35 @@
 #!/usr/bin/env python3
+import asyncio
+from time import perf_counter
+from typing import Any
+
 import pytest
 
-from pypass.app import from_pass_list_to_pd
 from pypass.passes import PassDB
 from pypass.quaeldich import extract_pass_data
+from pypass.quaeldich import get_html_components
+from pypass.quaeldich import get_pass_data
 from pypass.quaeldich import get_total_pass_count
+
+
+def test_multiprocess_quaeldich() -> None:
+
+    html_list = get_html_components(10)
+
+    tic = perf_counter()
+    res_sync = [get_pass_data(li) for li in html_list]
+    timer_1 = perf_counter() - tic
+
+    tic = perf_counter()
+    timer_2 = perf_counter() - tic
+
+    print(timer_1, timer_2)
 
 
 def test_data_extraction() -> None:
     counts = get_total_pass_count()
 
-    assert counts > 7794
+    assert counts >= 7794
 
     data = extract_pass_data(
         db_overwrite=False, db_loc="./tests/test_db/", pass_counts=5
@@ -47,3 +66,7 @@ def test_pass_data() -> None:
 
     with pytest.raises(Exception):
         passdb.search("Mont Vento", "name")
+
+
+if __name__ == "__main__":
+    test_async_quaeldich()

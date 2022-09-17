@@ -3,10 +3,12 @@
 import os
 import warnings
 from pathlib import Path
+from typing import Any
 from typing import Optional
 from unicodedata import combining
 from unicodedata import normalize
 
+import bs4
 import requests
 from bs4 import BeautifulSoup as bs
 from rich.progress import Progress
@@ -108,8 +110,6 @@ def extract_pass_data(
         list[dict]: Return pass data extracted.
     """
 
-    html_id = "qd_list_template_paesse_list"
-
     if db_loc is None:
         db_loc = DB_LOC
 
@@ -129,10 +129,7 @@ def extract_pass_data(
     with Progress(TEXT_COLUMN, TIME_COLUMN) as progress:
 
         progress.add_task("[cyan]Etracting html elements...")
-        r = requests.get(BASE_PASS_URL + f"?n={pass_counts}")
-        soup = bs(r.text, "lxml")
-        ul = soup.find(id=html_id)
-        html_pass_list = ul.findAll("li")
+        html_pass_list = get_html_components(pass_counts)
 
         # Sanity check.
         assert (
@@ -152,94 +149,21 @@ def extract_pass_data(
 
         for idx, li in enumerate(html_pass_list):
 
-            row = li.find("div", {"class": "row"})
-            all_divs = row.findAll("div")
-            all_links = [href["href"] for href in row.findAll("a", href=True)]
-            pass_url = BASE_URL + all_links[0]
-
-            # TODO: Split country part and region part
-            # TODO: Restrieve all regional data in quaeldich website
-            # Get geotraphical region of the pass
-            pass_region = []
-            for link in all_links:
-                if link.find("regionen") >= 0:
-                    pass_region.append(
-                        link.replace(BASE_URL + "/regionen/", "")
-                        .replace("/paesse/", "")
-                        .capitalize()
-                    )
-            pass_region = " ".join(pass_region)
-
-            # Clean up extracted text
-
-            data = [
-                (div.get_text())
-                .replace("\n", "")
-                .replace("\r", "")
-                .replace("quaeldich-Reise", "")
-                .strip()
-                for div in all_divs
-            ]
-
-            # Extract brief path info and translate german to english
-            all_from_to = []
-            for ft in data[6::3]:
-                _, ft = _convert_german(ft)
-                all_from_to.append(ft)
-
-            # Obtain URLs for each path and path ids used in quaeldich website
-            pass_coord = _get_pass_coord(pass_url)
-            path_urls = _get_path_url(pass_url)
-            path_info = _get_path_info(pass_url)
-            path_ids = _get_path_ids(path_urls)
-
-            gpt_dict = {}
-
-            if len(path_ids) == 0:
-
-                warnings.warn(
-                    f"Quaeldich: Path data-id cannot be found in {path_urls}. Data left as empty list.",
-                    UserWarning,
-                )
-
-            else:
-                path_gpt_js = _get_gpt_data_js(path_ids)
-                # Store data in the dictionary
-                for i, (gjs, ft, purl) in enumerate(
-                    zip(path_gpt_js, all_from_to, path_urls)
-                ):
-                    gpt_dict.update({i: {"name": ft, "url": purl, "gpt": gjs}})
-
-            pass_data = {
-                "name": data[0],
-                "coord": pass_coord,
-                "alt": data[3],
-                "region": pass_region.lower(),
-                "height": int(data[2].strip(" m")),
-                "total_distance": path_info["distance"],
-                "total_elevation": path_info["elevation"],
-                "avg_grad": path_info["gradient"],
-                "max_distance": max(path_info["distance"]),
-                "min_distance": min(path_info["distance"]),
-                "max_elevation": max(path_info["elevation"]),
-                "min_elevation": min(path_info["elevation"]),
-                "url": pass_url,
-                "gpts": gpt_dict,
-            }
+            pass_data = get_pass_data(li)
 
             db = TinyDB(db_loc_full)
             if db_overwrite:
-                searched = db.search(Query().name == data[0])
+                searched = db.search(Query().name == pass_data["name"])
                 if len(searched) > 0:
-                    db.update(pass_data, Query().name == data[0])
+                    db.update(pass_data, Query().name == pass_data["name"])
                 else:
                     db.insert(pass_data)
             else:
                 # Remove and save
                 db.insert(pass_data)
 
-            all_alts.append(data[3])
-            all_names.append(data[0])
+            all_alts.append(pass_data["alt"])
+            all_names.append(pass_data["name"])
             all_passes.append(pass_data)
 
             progress.update(
@@ -257,14 +181,113 @@ def extract_pass_data(
     return all_passes
 
 
+def get_html_components(pass_counts: int) -> bs4.ResultSet:
+    """Extract all html component for `pass_counts` number of listed Passes in quaeldich.de."""
+
+    html_id = "qd_list_template_paesse_list"
+
+    r = requests.get(BASE_PASS_URL + f"?n={pass_counts}")
+    html_pass_list = bs(r.text, "lxml").find(id=html_id).findAll("li")
+
+    return html_pass_list
+
+
+def get_pass_data(li: Any) -> dict[str, Any]:
+
+    row = li.find("div", {"class": "row"})
+    all_divs = row.findAll("div")
+    all_links = [href["href"] for href in row.findAll("a", href=True)]
+    pass_url = BASE_URL + all_links[0]
+
+    # TODO: Split country part and region part
+    # TODO: Restrieve all regional data in quaeldich website
+    # Get geotraphical region of the pass
+    pass_region = []
+    for link in all_links:
+        if link.find("regionen") >= 0:
+            pass_region.append(
+                link.replace(BASE_URL + "/regionen/", "")
+                .replace("/paesse/", "")
+                .capitalize()
+            )
+    pass_region = " ".join(pass_region)
+
+    # Clean up extracted text
+
+    data = [
+        (div.get_text())
+        .replace("\n", "")
+        .replace("\r", "")
+        .replace("quaeldich-Reise", "")
+        .strip()
+        for div in all_divs
+    ]
+
+    # Extract brief path info and translate german to english
+    all_from_to = []
+    for ft in data[6::3]:
+        _, ft = _convert_german(ft)
+        all_from_to.append(ft)
+
+    # Obtain URLs for each path and path ids used in quaeldich website
+    path_info = _get_path_info(pass_url)
+    pass_coord = _get_pass_coord(pass_url)
+    path_urls = _get_path_url(pass_url)
+
+    gpt_dict = {}
+    if len(path_urls) > 0:
+        path_ids = _get_path_ids(path_urls)
+        path_gpt_js = _get_gpt_data_js(path_ids)
+        # Store data in the dictionary
+        for i, (gjs, ft, purl) in enumerate(
+            zip(path_gpt_js, all_from_to, path_urls)
+        ):
+            gpt_dict.update({i: {"name": ft, "url": purl, "gpt": gjs}})
+    else:
+        # If there is no path info stored, save wrong values. Here, negative values.
+        path_info = {"distance": [-1.0], "elevation": [-1], "gradient": [-1.0]}
+        warnings.warn(
+            f"Quaeldich: Path path url cannot be found in {pass_url}. Data left as empty list.",
+            UserWarning,
+        )
+
+    return {
+        "name": data[0],
+        "coord": pass_coord,
+        "alt": data[3],
+        "region": pass_region.lower(),
+        "height": int(data[2].strip(" m")),
+        "total_distance": path_info["distance"],
+        "total_elevation": path_info["elevation"],
+        "avg_grad": path_info["gradient"],
+        "max_distance": max(path_info["distance"]),
+        "min_distance": min(path_info["distance"]),
+        "max_elevation": max(path_info["elevation"]),
+        "min_elevation": min(path_info["elevation"]),
+        "url": pass_url,
+        "gpts": gpt_dict,
+    }
+
+
+def _save_to_db() -> None:
+    pass
+
+
 def _get_pass_coord(pass_url: str) -> list[float]:
 
-    coord_string = (
-        bs(requests.get(pass_url).text, "lxml")
-        .find("div", {"class": "coords"})
-        .find("a", {"class": "external"})
-        .text
-    ).split(",")
+    try:
+        coord_string = (
+            bs(requests.get(pass_url).text, "lxml")
+            .find("div", {"class": "coords"})
+            .find("a", {"class": "external"})
+            .text
+        ).split(",")
+    except AttributeError:
+        # Store wrong data
+        coord_string = ["-1.0", "-1.0"]
+        warnings.warn(
+            f"Quaeldich: No coordinate information found in {pass_url}!"
+        )
 
     return [float(coord) for coord in coord_string]
 
@@ -330,11 +353,6 @@ def _get_path_url(pass_url: str) -> list[str]:
         if link["href"].find("/profile/") >= 0
     ]
 
-    if len(path_urls) == 0:
-        raise RuntimeError(
-            f"Quaeldich: Path url cannot be found! Check input pass_url.\n{pass_url}"
-        )
-
     return path_urls
 
 
@@ -368,8 +386,14 @@ def _get_path_info(pass_url: str) -> dict:
             )
 
     if len(distance) == 0 or len(elevation) == 0 or len(gradient) == 0:
-        raise RuntimeError(
-            f"Quaeldich: Basic information (km, Hm, and %) cannot be found! Check input pass_url:\n{pass_url}"
+
+        distance.append([-1.0])
+        elevation.append([-1])
+        gradient.append([-1.0])
+
+        warnings.warn(
+            f"Quaeldich: Basic information (km, Hm, and %) cannot be found! Check input pass_url:\n{pass_url}",
+            RuntimeWarning,
         )
 
     return {

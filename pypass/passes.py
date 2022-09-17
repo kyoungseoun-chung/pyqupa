@@ -122,6 +122,12 @@ class Pass:
         self.grad_process()
 
     @property
+    def is_valid(self) -> bool:
+        """Check whether Pass information contains valid path data."""
+
+        return self.max_distance > 0
+
+    @property
     def map_bound(self) -> list[float]:
 
         sf = np.asarray(self.starts_from, dtype=np.float64)
