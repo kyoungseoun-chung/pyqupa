@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Retrieve pass data from https://www.quaeldich.de/. """
 import os
+import warnings
 from pathlib import Path
 from typing import Optional
 from unicodedata import combining
@@ -191,14 +192,23 @@ def extract_pass_data(
             path_urls = _get_path_url(pass_url)
             path_info = _get_path_info(pass_url)
             path_ids = _get_path_ids(path_urls)
-            path_gpt_js = _get_gpt_data_js(path_ids)
 
-            # Store data in the dictionary
             gpt_dict = {}
-            for i, (gjs, ft, purl) in enumerate(
-                zip(path_gpt_js, all_from_to, path_urls)
-            ):
-                gpt_dict.update({i: {"name": ft, "url": purl, "gpt": gjs}})
+
+            if len(path_ids) == 0:
+
+                warnings.warn(
+                    f"Quaeldich: Path data-id cannot be found in {path_urls}. Data left as empty list.",
+                    UserWarning,
+                )
+
+            else:
+                path_gpt_js = _get_gpt_data_js(path_ids)
+                # Store data in the dictionary
+                for i, (gjs, ft, purl) in enumerate(
+                    zip(path_gpt_js, all_from_to, path_urls)
+                ):
+                    gpt_dict.update({i: {"name": ft, "url": purl, "gpt": gjs}})
 
             pass_data = {
                 "name": data[0],
@@ -297,11 +307,6 @@ def _get_path_ids(path_urls: list[str]) -> list[str]:
         for img in path
         if img["src"].find("gradient") >= 0
     ]
-
-    if len(path_urls) == 0:
-        raise RuntimeError(
-            f"Quaeldich: Path data-id cannot be found! Check input path_url.\n{path_urls}"
-        )
 
     return path_ids
 
