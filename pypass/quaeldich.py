@@ -83,7 +83,7 @@ def get_total_pass_count() -> int:
 
 def extract_pass_data(
     db_overwrite: bool = False,
-    db_loc: str = DB_LOC,
+    db_loc: Optional[str] = DB_LOC,
     pass_counts: Optional[int] = None,
 ) -> list[dict]:
     """Get pass data from quaeldich website.
@@ -106,6 +106,9 @@ def extract_pass_data(
     """
 
     html_id = "qd_list_template_paesse_list"
+
+    if db_loc is None:
+        db_loc = DB_LOC
 
     if pass_counts is None:
         pass_counts = get_total_pass_count()

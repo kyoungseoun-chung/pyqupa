@@ -17,9 +17,25 @@ EX_PARSE.add_argument(
     help="extract n number of data from quaeldich.de.",
     type=int,
 )
+EX_PARSE.add_argument(
+    "-d",
+    "--directory",
+    metavar="directory",
+    help="db directory path to be saved.",
+    type=str,
+)
 
 
-def main(argv: Any) -> None:
+def main(argv: Any) -> list[dict]:
+
+    try:
+        db_loc = argv.directory
+    except AttributeError:
+        db_loc = None
 
     n_pass = argv.extract
-    extract_pass_data(pass_counts=n_pass if n_pass > 0 else None)
+    data = extract_pass_data(
+        db_loc=db_loc, pass_counts=n_pass if n_pass > 0 else None
+    )
+
+    return data
