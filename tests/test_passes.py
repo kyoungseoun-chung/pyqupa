@@ -7,23 +7,7 @@ import pytest
 
 from pypass.passes import PassDB
 from pypass.quaeldich import extract_pass_data
-from pypass.quaeldich import get_html_components
-from pypass.quaeldich import get_pass_data
 from pypass.quaeldich import get_total_pass_count
-
-
-def test_multiprocess_quaeldich() -> None:
-
-    html_list = get_html_components(10)
-
-    tic = perf_counter()
-    res_sync = [get_pass_data(li) for li in html_list]
-    timer_1 = perf_counter() - tic
-
-    tic = perf_counter()
-    timer_2 = perf_counter() - tic
-
-    print(timer_1, timer_2)
 
 
 def test_data_extraction() -> None:
@@ -48,9 +32,13 @@ def test_pass_data() -> None:
     Pass_alt = passdb.search("Passo dello Stelvio", "name")
     assert Pass_alt[0].name == "Stilfser Joch"
 
-    Pass_reg = passdb.search("italien alpen", "region")
-    assert len(Pass_reg) == 3
-    assert Pass_reg[0].region == "italien alpen"
+    Pass_cou = passdb.search("italien", "country")
+    assert len(Pass_cou) == 3
+    assert Pass_cou[0].country == "italien"
+
+    Pass_reg = passdb.search("alpen", "region")
+    assert len(Pass_reg) == 4
+    assert Pass_reg[0].region == "alpen"
 
     Pass_hei = passdb.search([1800, 2000], "height")
     assert len(Pass_hei) == 1
@@ -66,7 +54,3 @@ def test_pass_data() -> None:
 
     with pytest.raises(Exception):
         passdb.search("Mont Vento", "name")
-
-
-if __name__ == "__main__":
-    test_async_quaeldich()

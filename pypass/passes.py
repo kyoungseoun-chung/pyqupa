@@ -89,6 +89,8 @@ class Pass:
     """coordinate of pass."""
     alt: str
     """Alternative name if exists"""
+    country: str
+    """Pass country"""
     region: str
     """Pass region."""
     height: int
@@ -494,6 +496,26 @@ def search_pass_by_region(region: str, db_loc: str) -> list[Pass]:
     return searched_pass
 
 
+def search_pass_by_country(country: str, db_loc: str) -> list[Pass]:
+
+    country = country.lower()
+
+    pass_db_loc = db_loc + PASS_DB
+    db = TinyDB(pass_db_loc)
+
+    from_db = db.search(Query().country == country)
+
+    searched_pass = [Pass(**data) for data in from_db]
+
+    if len(searched_pass) == 0:
+
+        raise RuntimeError(
+            f"Pass: No pass data searched matching country: {country}"
+        )
+
+    return searched_pass
+
+
 def search_pass_by_name(name: str, db_loc: str) -> list[Pass]:
     """Search pass by its name. First, it searches `db.names`. In the case of no matching name is found, check `db.alts` instead. Also, if there is a typo in the given name input, this function will return non-empty list contains name suggestions. Suggestion is made by using `difflib.get_close_mathces`.
 
@@ -536,7 +558,14 @@ def search_pass_by_name(name: str, db_loc: str) -> list[Pass]:
     return pass_searched
 
 
-PASS_SEARCH_TYPE = ["name", "height", "elevation", "distance", "region"]
+PASS_SEARCH_TYPE = [
+    "name",
+    "height",
+    "elevation",
+    "distance",
+    "region",
+    "country",
+]
 
 SEARCH_FACTORIES = {
     "name": {"func": search_pass_by_name, "key_type": str},
@@ -550,6 +579,7 @@ SEARCH_FACTORIES = {
         "key_type": Union[list, tuple],
     },
     "region": {"func": search_pass_by_region, "key_type": str},
+    "country": {"func": search_pass_by_country, "key_type": str},
 }
 
 
