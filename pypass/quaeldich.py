@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Retrieve pass data from https://www.quaeldich.de/. """
-from importlib.resources import path
+import os
 from pathlib import Path
 from typing import Optional
 from unicodedata import combining
@@ -11,11 +11,10 @@ from bs4 import BeautifulSoup as bs
 from rich.progress import Progress
 from rich.progress import TextColumn
 from rich.progress import TimeElapsedColumn
-from rich.progress import track
 from tinydb import Query
 from tinydb import TinyDB
 
-DB_LOC = "./pypass/db/"
+DB_LOC = os.path.dirname(__file__) + "/db/"
 PASS_DB = "passes.json"
 PASS_NAME_DB = "pass_names.json"
 

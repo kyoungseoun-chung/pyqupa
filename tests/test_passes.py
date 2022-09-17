@@ -10,7 +10,7 @@ from pypass.quaeldich import get_total_pass_count
 def test_data_extraction() -> None:
     counts = get_total_pass_count()
 
-    assert counts == 7794
+    assert counts > 7794
 
     data = extract_pass_data(
         db_overwrite=False, db_loc="./tests/test_db/", pass_counts=5
