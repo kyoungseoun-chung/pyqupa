@@ -199,7 +199,7 @@ def get_pass_data(li: Any) -> dict[str, Any]:
     all_links = [href["href"] for href in row.findAll("a", href=True)]
     pass_url = BASE_URL + all_links[0]
 
-    country, region = _get_pass_region(all_links)
+    country, region = _get_pass_region(all_links, pass_url)
 
     # Clean up extracted text
     data = [
@@ -233,7 +233,6 @@ def get_pass_data(li: Any) -> dict[str, Any]:
             gpt_dict.update({i: {"name": ft, "url": purl, "gpt": gjs}})
     else:
         # If there is no path info stored, save wrong values. Here, negative values.
-        path_info = {"distance": [-1.0], "elevation": [-1], "gradient": [-1.0]}
         warnings.warn(
             f"Quaeldich: Path path url cannot be found in {pass_url}. Data left as empty list.",
             UserWarning,
@@ -258,21 +257,31 @@ def get_pass_data(li: Any) -> dict[str, Any]:
     }
 
 
-def _get_pass_region(all_links: list[str]) -> tuple[str, str]:
+def _get_pass_region(all_links: list[str], pass_url: str) -> tuple[str, str]:
 
-    country = (
-        all_links[1]
-        .replace(BASE_URL + "/regionen/", "")
-        .replace("/paesse/", "")
-        .lower()
-    )
+    try:
 
-    region = (
-        all_links[2]
-        .replace(BASE_URL + "/regionen/", "")
-        .replace("/paesse/", "")
-        .lower()
-    )
+        country = (
+            all_links[1]
+            .replace(BASE_URL + "/regionen/", "")
+            .replace("/paesse/", "")
+            .lower()
+        )
+
+        region = (
+            all_links[2]
+            .replace(BASE_URL + "/regionen/", "")
+            .replace("/paesse/", "")
+            .lower()
+        )
+
+    except IndexError:
+        country = ""
+        region = ""
+        warnings.warn(
+            f"Quaeldich: country and region information cannot be found in {pass_url}",
+            RuntimeWarning,
+        )
 
     return country, region
 
