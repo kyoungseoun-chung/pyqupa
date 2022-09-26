@@ -1,31 +1,29 @@
-# See https://pre-commit.com for more information
-# See https://pre-commit.com/hooks.html for more hooks
-# Copied from https://github.com/mCodingLLC/pre-commit-example-project/blob/master/.pre-commit-config.yaml
-# and modified by K.Chung
-
 repos:
--   repo: https://github.com/psf/black
-    rev: 22.3.0
-    hooks:
-    -   id: black
-        args: [--line-length=79]
-
--   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.1.0
-    hooks:
-    -   id: trailing-whitespace
-    -   id: end-of-file-fixer
-    -   id: check-yaml
-    -   id: debug-statements
-        language_version: python3
-
--   repo: https://github.com/asottile/reorder_python_imports
-    rev: v2.6.0
-    hooks:
-    -   id: reorder-python-imports
-
--   repo: https://github.com/asottile/pyupgrade
-    rev: v2.31.1
-    hooks:
-    -   id: pyupgrade
-        args: [--py39-plus]
+- hooks:
+  - args:
+    - --line-length=79
+    id: black
+  repo: https://github.com/psf/black
+  rev: 22.3.0
+- hooks:
+  - id: trailing-whitespace
+  - id: end-of-file-fixer
+  - id: check-yaml
+  - id: debug-statements
+    language_version: python3
+  repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v4.1.0
+- hooks:
+  - id: reorder-python-imports
+  repo: https://github.com/asottile/reorder_python_imports
+  rev: v2.6.0
+- hooks:
+  - args:
+    - --py39-plus
+    id: pyupgrade
+  repo: https://github.com/asottile/pyupgrade
+  rev: v2.31.1
+- hooks:
+  - id: commitizen
+  repo: https://github.com/commitizen-tools/commitizen
+  rev: v2.35.0

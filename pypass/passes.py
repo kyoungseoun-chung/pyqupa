@@ -3,6 +3,7 @@
 import json
 from dataclasses import dataclass
 from difflib import get_close_matches
+import pdb
 from re import S
 from typing import get_args
 from typing import get_origin
@@ -116,12 +117,12 @@ class Pass:
 
     def __post_init__(self):
 
-        self.geo_log = get_gpt_data(self.gpts)
+        if len(self.gpts) > 0:
 
-        self.loc = self.geo_log[0][-1]
+            self.geo_log = get_gpt_data(self.gpts)
 
-        # Process gradients
-        self.grad_process()
+            # Process gradients
+            self.grad_process()
 
     @property
     def is_valid(self) -> bool:
@@ -159,7 +160,7 @@ class Pass:
     @property
     def starts_from(self) -> list[list[float]]:
 
-        return [geo[0, :2].tolist() for geo in self.geo_log]
+        return [geo[0, :2].tolist() for geo in self.geo_log if geo is not None]
 
     @property
     def path_names(self) -> list[str]:
@@ -254,46 +255,51 @@ class Pass:
 
         for geo in self.geo_log:
 
-            dist = geo[:, 3] * 1000  # in meter
-            self._distance.append(dist / 1000)
-            height = geo[:, 2]  # in meter
-            self._elevation.append(height)
+            if geo is not None:
 
-            self._elev_lower.append(decompose_digit(height[0], -2)[0])
-            self._elev_upper.append(decompose_digit(height[-1], 2)[0])
+                dist = geo[:, 3] * 1000  # in meter
+                self._distance.append(dist / 1000)
+                height = geo[:, 2]  # in meter
+                # Altitude cannot be zero?
+                dist = dist[height > 0.0]
+                height = height[height > 0.0]  # remove zero
+                self._elevation.append(height)
 
-            # Compute gradient
-            mask = np.diff(dist) > 1
-            grad = np.zeros_like(np.diff(dist))
-            grad[mask] = (
-                np.diff(height)[mask] / np.diff(dist)[mask] * 100
-            )  # in %
-            # Starting point will be zero gradient
-            self._grad.append(np.append([0.0], grad))
+                self._elev_lower.append(decompose_digit(height[0], -2)[0])
+                self._elev_upper.append(decompose_digit(height[-1], 2)[0])
 
-            # Min-max gradient measured
-            self._grad_max.append(min(np.max(grad), GRAD_MAX))
-            self._grad_min.append(max(np.min(grad), GRAD_MIN))
+                # Compute gradient
+                mask = np.diff(dist) > 1
+                grad = np.zeros_like(np.diff(dist))
+                grad[mask] = (
+                    np.diff(height)[mask] / np.diff(dist)[mask] * 100
+                )  # in %
+                # Starting point will be zero gradient
+                self._grad.append(np.append([0.0], grad))
 
-            flat_mask = np.logical_and(grad >= -2, grad < 2)
-            descend_mask = grad < -2
-            # Sum all flat section
-            self._flat.append(np.diff(dist)[flat_mask].sum() / 1000)
-            # Sum all descend section
-            self._descend.append(np.diff(dist)[descend_mask].sum() / 1000)
+                # Min-max gradient measured
+                self._grad_max.append(min(np.max(grad), GRAD_MAX))
+                self._grad_min.append(max(np.min(grad), GRAD_MIN))
 
-            # Gradients are binned at the mid-points
-            mid_pt = dist[:-1] + np.diff(dist)[0] / 2
+                flat_mask = np.logical_and(grad >= -2, grad < 2)
+                descend_mask = grad < -2
+                # Sum all flat section
+                self._flat.append(np.diff(dist)[flat_mask].sum() / 1000)
+                # Sum all descend section
+                self._descend.append(np.diff(dist)[descend_mask].sum() / 1000)
 
-            # Interpolate every 100 meter and the start at 50 meter not 0.
-            # TODO: it should be average over 100m not the interpolation.
-            xp = np.arange(50, dist[-1] + 50, 100)
-            self._grad_bin.append(xp / 1000)
-            grad_interp = np.interp(xp, mid_pt, grad)
-            self._grad_interp.append(grad_interp)
-            elev_interp = np.interp(xp / 1000, dist / 1000, height)
-            self._elev_interp.append(elev_interp)
-            self._grad_color.append(grad_to_color(grad_interp))
+                # Gradients are binned at the mid-points
+                mid_pt = dist[:-1] + np.diff(dist)[0] / 2
+
+                # Interpolate every 100 meter and the start at 50 meter not 0.
+                # TODO: it should be average over 100m not the interpolation.
+                xp = np.arange(50, dist[-1] + 50, 100)
+                self._grad_bin.append(xp / 1000)
+                grad_interp = np.interp(xp, mid_pt, grad)
+                self._grad_interp.append(grad_interp)
+                elev_interp = np.interp(xp / 1000, dist / 1000, height)
+                self._elev_interp.append(elev_interp)
+                self._grad_color.append(grad_to_color(grad_interp))
 
     # NOTE: type for plt.Figure is ambigous. Therefore, type: ignore
     def plot_gradient(
@@ -408,9 +414,7 @@ def search_pass_by_distance(distance: list[float], db_loc: str) -> list[Pass]:
     return searched_pass
 
 
-def search_pass_by_elevation(
-    elevation: list[float], db_loc: str
-) -> list[Pass]:
+def search_pass_by_elevation(elevation: list[float], db_loc: str) -> list[Pass]:
 
     pass_db_loc = db_loc + PASS_DB
     db = TinyDB(pass_db_loc)
@@ -664,7 +668,9 @@ def _sanity_check_list_input(inputs: Union[list[float], list[int]]) -> None:
     ), "Pass: bounds should be increasing order -> [lower, upper]."
 
 
-def get_gpt_data(gpts: dict[str, dict[str, str]]) -> list[NDArray[np.float64]]:
+def get_gpt_data(
+    gpts: dict[str, dict[str, str]]
+) -> list[Optional[NDArray[np.float64]]]:
     """Obtain latitude, longitude, height, and distance information (GPT data) from the path ids.
 
     Args:
@@ -687,11 +693,17 @@ def get_gpt_data(gpts: dict[str, dict[str, str]]) -> list[NDArray[np.float64]]:
     gpt_data = []
     for gpt in gpt_data_string:
 
-        gpt_data.append(
-            np.asarray(
-                [np.array(line.split(","), dtype=np.float64) for line in gpt],
-                dtype=np.float64,
+        try:
+            gpt_data.append(
+                np.asarray(
+                    [
+                        np.array(line.split(","), dtype=np.float64)
+                        for line in gpt
+                    ],
+                    dtype=np.float64,
+                )
             )
-        )
+        except ValueError:
+            gpt_data.append(None)
 
     return gpt_data

@@ -22,7 +22,14 @@ def test_data_extraction() -> None:
     assert len(data) == 5
 
 
-def test_pass_data() -> None:
+def test_pass_data_using_module_db() -> None:
+
+    passdb = PassDB()
+
+    pass_reg = passdb.search("alpen", "region")
+
+
+def test_pass_data_using_test_db() -> None:
 
     passdb = PassDB("./tests/test_db/")
     Pass = passdb.search("Mont Ventoux", "name")
