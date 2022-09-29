@@ -3,7 +3,6 @@
 import json
 from dataclasses import dataclass
 from difflib import get_close_matches
-import pdb
 from re import S
 from typing import get_args
 from typing import get_origin
@@ -414,7 +413,9 @@ def search_pass_by_distance(distance: list[float], db_loc: str) -> list[Pass]:
     return searched_pass
 
 
-def search_pass_by_elevation(elevation: list[float], db_loc: str) -> list[Pass]:
+def search_pass_by_elevation(
+    elevation: list[float], db_loc: str
+) -> list[Pass]:
 
     pass_db_loc = db_loc + PASS_DB
     db = TinyDB(pass_db_loc)

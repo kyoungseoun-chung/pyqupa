@@ -1,8 +1,4 @@
 #!/usr/bin/env python3
-import asyncio
-from time import perf_counter
-from typing import Any
-
 import pytest
 
 from pypass.passes import PassDB

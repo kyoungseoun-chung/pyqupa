@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
-"""Retrieve pass data from https://www.quaeldich.de/. """
+"""Retrieve pass data from https://www.quaeldich.de/.
+
+Note: Not all data are stored correctly. This code will exclude any incomplete Pass data.
+"""
 import os
 import warnings
+from http import HTTPStatus
 from pathlib import Path
 from typing import Any
 from typing import Optional
@@ -151,6 +155,9 @@ def extract_pass_data(
 
             pass_data = get_pass_data(li)
 
+            if pass_data["status"] == HTTPStatus.NOT_FOUND:
+                continue
+
             db = TinyDB(db_loc_full)
             if db_overwrite:
                 searched = db.search(Query().name == pass_data["name"])
@@ -194,12 +201,21 @@ def get_html_components(pass_counts: int) -> bs4.ResultSet:
 
 def get_pass_data(li: Any) -> dict[str, Any]:
 
+    status = HTTPStatus.OK
+
     row = li.find("div", {"class": "row"})
     all_divs = row.findAll("div")
     all_links = [href["href"] for href in row.findAll("a", href=True)]
     pass_url = BASE_URL + all_links[0]
 
-    country, region = _get_pass_region(all_links, pass_url)
+    region_info = _get_pass_region(all_links, pass_url)
+
+    if region_info["status"] == HTTPStatus.NOT_FOUND:
+        warnings.warn(region_info["msg"], RuntimeWarning)
+        return {"status": HTTPStatus.NOT_FOUND}
+    else:
+        country = region_info["country"]
+        region = region_info["region"]
 
     # Clean up extracted text
     data = [
@@ -219,11 +235,24 @@ def get_pass_data(li: Any) -> dict[str, Any]:
 
     # Obtain URLs for each path and path ids used in quaeldich website
     path_info = _get_path_info(pass_url)
-    pass_coord = _get_pass_coord(pass_url)
-    path_urls = _get_path_url(pass_url)
+    if path_info["status"] == HTTPStatus.NOT_FOUND:
+        warnings.warn(path_info["msg"], RuntimeWarning)
+        return {"status": HTTPStatus.NOT_FOUND}
 
-    gpt_dict = {}
-    if len(path_urls) > 0:
+    coord_info = _get_pass_coord(pass_url)
+    if coord_info["status"] == HTTPStatus.NOT_FOUND:
+        warnings.warn(coord_info["msg"], RuntimeWarning)
+        return {"status": HTTPStatus.NOT_FOUND}
+    else:
+        pass_coord = coord_info["coord"]
+
+    urls_info = _get_path_url(pass_url)
+    if urls_info["status"] == HTTPStatus.NOT_FOUND:
+        warnings.warn(urls_info["msg"], RuntimeWarning)
+        return {"status": HTTPStatus.NOT_FOUND}
+    else:
+        path_urls = urls_info["urls"]
+        gpt_dict = {}
         path_ids = _get_path_ids(path_urls)
         path_gpt_js = _get_gpt_data_js(path_ids)
         # Store data in the dictionary
@@ -231,12 +260,6 @@ def get_pass_data(li: Any) -> dict[str, Any]:
             zip(path_gpt_js, all_from_to, path_urls)
         ):
             gpt_dict.update({i: {"name": ft, "url": purl, "gpt": gjs}})
-    else:
-        # If there is no path info stored, save wrong values. Here, negative values.
-        warnings.warn(
-            f"Quaeldich: Path path url cannot be found in {pass_url}. Data left as empty list.",
-            UserWarning,
-        )
 
     return {
         "name": data[0],
@@ -254,13 +277,16 @@ def get_pass_data(li: Any) -> dict[str, Any]:
         "min_elevation": min(path_info["elevation"]),
         "url": pass_url,
         "gpts": gpt_dict,
+        "status": status,
     }
 
 
-def _get_pass_region(all_links: list[str], pass_url: str) -> tuple[str, str]:
+def _get_pass_region(all_links: list[str], pass_url: str) -> dict[str, Any]:
+
+    status = HTTPStatus.OK
+    msg = ""
 
     try:
-
         country = (
             all_links[1]
             .replace(BASE_URL + "/regionen/", "")
@@ -278,15 +304,17 @@ def _get_pass_region(all_links: list[str], pass_url: str) -> tuple[str, str]:
     except IndexError:
         country = ""
         region = ""
-        warnings.warn(
-            f"Quaeldich: country and region information cannot be found in {pass_url}",
-            RuntimeWarning,
-        )
 
-    return country, region
+        status = HTTPStatus.NOT_FOUND
+        msg = f"Quaeldich: country and region information cannot be found in {pass_url}"
+
+    return {"country": country, "region": region, "status": status, "msg": msg}
 
 
-def _get_pass_coord(pass_url: str) -> list[float]:
+def _get_pass_coord(pass_url: str) -> dict[str, Any]:
+
+    status = HTTPStatus.OK
+    msg = ""
 
     try:
         coord_string = (
@@ -295,14 +323,14 @@ def _get_pass_coord(pass_url: str) -> list[float]:
             .find("a", {"class": "external"})
             .text
         ).split(",")
+        coord = [float(coord) for coord in coord_string]
     except AttributeError:
         # Store wrong data
-        coord_string = ["-1.0", "-1.0"]
-        warnings.warn(
-            f"Quaeldich: No coordinate information found in {pass_url}!"
-        )
+        coord = []
+        status = HTTPStatus.NOT_FOUND
+        msg = f"Quaeldich: No coordinate information found in {pass_url}!"
 
-    return [float(coord) for coord in coord_string]
+    return {"coord": coord, "status": status, "msg": msg}
 
 
 def _get_gpt_data_js(path_ids) -> list[str]:
@@ -347,15 +375,13 @@ def _get_path_ids(path_urls: list[str]) -> list[str]:
     return path_ids
 
 
-def _get_path_url(pass_url: str) -> list[str]:
+def _get_path_url(pass_url: str) -> dict[str, Any]:
     """From pass name, obtain path url.
-
     Args:
         pass_name (str): name of the pass, in German.
-
-    Returns:
-        list[str]: list of urls of the pass
     """
+
+    status = HTTPStatus.OK
     all_url_links = bs(requests.get(pass_url).text, "lxml").find_all(
         "a", href=True
     )
@@ -366,10 +392,13 @@ def _get_path_url(pass_url: str) -> list[str]:
         if link["href"].find("/profile/") >= 0
     ]
 
-    return path_urls
+    if len(path_urls) > 0:
+        return {"urls": path_urls, "status": status}
+    else:
+        return {"urls": [""], "status": HTTPStatus.NOT_FOUND}
 
 
-def _get_path_info(pass_url: str) -> dict:
+def _get_path_info(pass_url: str) -> dict[str, Any]:
     """From pass name, obtain basic path information.
 
     Args:
@@ -380,9 +409,11 @@ def _get_path_info(pass_url: str) -> dict:
     """
     all_info = bs(requests.get(pass_url).text, "lxml").find_all("small")
 
-    distance = []
-    elevation = []
-    gradient = []
+    distance: list[float] = []
+    elevation: list[int] = []
+    gradient: list[float] = []
+    status = HTTPStatus.OK
+    msg = ""
 
     for info in all_info:
 
@@ -400,19 +431,17 @@ def _get_path_info(pass_url: str) -> dict:
 
     if len(distance) == 0 or len(elevation) == 0 or len(gradient) == 0:
 
-        distance.append([-1.0])
-        elevation.append([-1])
-        gradient.append([-1.0])
-
-        warnings.warn(
+        status = HTTPStatus.NOT_FOUND
+        msg = (
             f"Quaeldich: Basic information (km, Hm, and %) cannot be found! Check input pass_url:\n{pass_url}",
-            RuntimeWarning,
         )
 
     return {
         "distance": distance,
         "elevation": elevation,
         "gradient": gradient,
+        "status": status,
+        "msg": msg,
     }
 
 

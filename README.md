@@ -107,7 +107,7 @@ Or access via [URL](https://kyoungseoun-chung-pypass-pypassapp-xwr7oa.streamlita
 
 ### Current issues/WIPs
 
-Below is the list of issues or WIPs. 
+Below is the list of issues or WIPs.
 
 #### Data exception handling
 - [ ] Empty Pass basic data.
