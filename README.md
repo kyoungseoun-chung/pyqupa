@@ -104,10 +104,19 @@ Or access via [URL](https://kyoungseoun-chung-pypass-pypassapp-xwr7oa.streamlita
 * Search by distance:
 ![search by name](.pypass/../pypass/assets/screenshots/search_by_distance.png)
 
-## WIP:
-- Pass data
-    - [ ] Elaborate gradient computation.
-    - [ ] Fix search by region.
-- GUI using Streamlit.
-    - [ ] Better gradient profile.
-    - [ ] Change plot engine from matplotlib to plotly.
+
+### Current issues/WIPs
+
+Below is the list of issues or WIPs. 
+
+#### Data exception handling
+- [ ] Empty Pass basic data.
+- [ ] Empty geopositioning data.
+- [ ] Non-empty geopositioning data but with empty string.
+
+#### Better data process
+- [ ] Elaborate gradient computation.
+
+#### GUI app
+- [ ] Pass search options.
+- [ ] Change plots from `matplotlib` to `plotly`.
