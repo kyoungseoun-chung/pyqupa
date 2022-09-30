@@ -381,7 +381,6 @@ def _get_path_url(pass_url: str) -> dict[str, Any]:
         pass_name (str): name of the pass, in German.
     """
 
-    status = HTTPStatus.OK
     all_url_links = bs(requests.get(pass_url).text, "lxml").find_all(
         "a", href=True
     )
@@ -393,9 +392,10 @@ def _get_path_url(pass_url: str) -> dict[str, Any]:
     ]
 
     if len(path_urls) > 0:
-        return {"urls": path_urls, "status": status}
+        return {"urls": path_urls, "status": HTTPStatus.OK, "msg": ""}
     else:
-        return {"urls": [""], "status": HTTPStatus.NOT_FOUND}
+        msg = f"Quaeldich: path urls cannot be found! Check input pass_url:\n{pass_url}"
+        return {"urls": [""], "status": HTTPStatus.NOT_FOUND, "msg": msg}
 
 
 def _get_path_info(pass_url: str) -> dict[str, Any]:
@@ -432,9 +432,7 @@ def _get_path_info(pass_url: str) -> dict[str, Any]:
     if len(distance) == 0 or len(elevation) == 0 or len(gradient) == 0:
 
         status = HTTPStatus.NOT_FOUND
-        msg = (
-            f"Quaeldich: Basic information (km, Hm, and %) cannot be found! Check input pass_url:\n{pass_url}",
-        )
+        msg = f"Quaeldich: Basic information (km, Hm, and %) cannot be found! Check input pass_url:\n{pass_url}"
 
     return {
         "distance": distance,
