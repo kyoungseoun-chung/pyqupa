@@ -4,6 +4,26 @@ from typing import Optional
 
 import numpy as np
 
+from rich.console import Console
+
+console = Console()
+rprint = console.print
+
+
+def system_logger(
+    prefix: str, msg: str, values: Optional[float] = None
+) -> None:
+    """Pretty logger using rich."""
+
+    if values is None:
+        console.print(f"[bold blue]{prefix.upper()}[/bold blue]: " + msg)
+    else:
+        console.print(
+            f"[bold blue]{prefix.upper()}[/bold blue]: "
+            + msg
+            + f"[bold magenta] - {values} [/bold magenta]"
+        )
+
 
 def hex_to_rgb(hex: str, opacity: Optional[float] = None) -> list[int]:
     """Convert hex code to rgb"""
