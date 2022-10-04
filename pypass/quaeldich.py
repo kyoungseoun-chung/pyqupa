@@ -365,11 +365,7 @@ def _get_path_info(pass_url) -> dict[str, Any]:
             infos = pdiv.find_all("small")
 
             for info in infos:
-                if (
-                    "km" in info.text
-                    and "Hm" in info.text
-                    and "%" in info.text
-                ):
+                if "km" in info.text and "Hm" in info.text and "%" in info.text:
                     data_extracted = info.text.replace(" ", "").split("|")
                     distance.append(
                         float(
@@ -387,9 +383,7 @@ def _get_path_info(pass_url) -> dict[str, Any]:
                     )
                     gradient.append(
                         float(
-                            data_extracted[2]
-                            .replace(",", ".")
-                            .replace("%", "")
+                            data_extracted[2].replace(",", ".").replace("%", "")
                         )
                     )
             path_ids_container = pdiv.find_all("img")
@@ -399,7 +393,7 @@ def _get_path_info(pass_url) -> dict[str, Any]:
                     path_id = (
                         img["src"]
                         .replace("/qdtp/anfahrten/", "")
-                        .replace("_gradient.gif", "")
+                        .replace("_gradient_600_50.gif", "")
                     )
                     path_gpt_js.append(
                         f"{BASE_URL}/qdtp/anfahrten/{path_id}.json"
