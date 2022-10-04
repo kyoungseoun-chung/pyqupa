@@ -1,4 +1,4 @@
-# Currently, the code is in alpha stage. Heavly under development! (Only a portion of web data is stored in `pypass/db` at this moment.)
+# Currently, the code is in alpha stage. Heavly under development! Features can be changed without notice.
 # PYPASS: Python wrapper for [quaeldich.de](https://www.quaeldich.de)
 
 A Python interface to access data in [quaeldich.de](https://www.quaeldich.de).
@@ -88,7 +88,7 @@ NameError: The given name (Mont Ventox) is not in our database. Did you mean ['M
 ```
 
 
-### Running GUI
+### Running GUI (WIP)
 
 We created GUI using [steamlit](https://streamlit.io). You can run GUI by typing following command:
 ```zsh
