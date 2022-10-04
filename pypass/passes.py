@@ -3,7 +3,6 @@
 import json
 from dataclasses import dataclass
 from difflib import get_close_matches
-from re import S
 from typing import get_args
 from typing import get_origin
 from typing import Optional
@@ -400,9 +399,8 @@ def search_pass_by_distance(distance: list[float], db_loc: str) -> list[Pass]:
     for data in from_db:
         dist_list = np.asarray(data["total_distance"])
         indicies = np.argwhere(
-            np.logical_and(dist_list > distance[0], dist_list < distance[1])
+            np.logical_and(dist_list >= distance[0], dist_list <= distance[1])
         )
-
         searched_pass.append(Pass(**_update_list_data(data, indicies)))
 
     if len(searched_pass) == 0:
