@@ -364,7 +364,11 @@ def _get_path_info(pass_url) -> dict[str, Any]:
             infos = pdiv.find_all("small")
 
             for info in infos:
-                if "km" in info.text and "Hm" in info.text and "%" in info.text:
+                if (
+                    "km" in info.text
+                    and "Hm" in info.text
+                    and "%" in info.text
+                ):
                     data_extracted = info.text.replace(" ", "").split("|")
                     distance.append(
                         float(
@@ -382,7 +386,9 @@ def _get_path_info(pass_url) -> dict[str, Any]:
                     )
                     gradient.append(
                         float(
-                            data_extracted[2].replace(",", ".").replace("%", "")
+                            data_extracted[2]
+                            .replace(",", ".")
+                            .replace("%", "")
                         )
                     )
             path_ids_container = pdiv.find_all("img")

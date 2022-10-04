@@ -11,6 +11,7 @@ def test_pass_data_using_module_db() -> None:
 
     passdb = PassDB()
 
+    pass_name = passdb.search("Mont Ventoux", "name")
     pass_dist = passdb.search([10.0, 15.0], "distance")
     pass_reg = passdb.search("alpen", "region")
 
