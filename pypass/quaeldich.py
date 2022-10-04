@@ -4,6 +4,7 @@
 Note: Not all data are stored correctly. This code will exclude any incomplete Pass data.
 """
 import os
+import sys
 import warnings
 from http import HTTPStatus
 from pathlib import Path
@@ -21,6 +22,8 @@ from rich.progress import TimeElapsedColumn
 from rich.progress import TimeRemainingColumn
 from tinydb import Query
 from tinydb import TinyDB
+
+from pypass.tools import system_logger
 
 DB_LOC = os.path.dirname(__file__) + "/db/"
 PASS_DB = "passes.json"
@@ -120,8 +123,9 @@ def extract_pass_data(
     if pass_counts is None:
         pass_counts = get_total_pass_count()
 
-    db_loc_full = db_loc + PASS_DB
-    name_db_loc_full = db_loc + PASS_NAME_DB
+    db_loc_full = Path(db_loc) / Path(PASS_DB)
+    name_db_loc_full = Path(db_loc) / Path(PASS_NAME_DB)
+
     if not db_overwrite:
         # Remove all databases
         if Path(name_db_loc_full).exists():
@@ -130,6 +134,7 @@ def extract_pass_data(
         if Path(db_loc_full).exists():
             Path(db_loc_full).unlink()
 
+    system_logger("QUAELDICH", "start data extraction!")
     with Progress(TEXT_COLUMN, TIME_COLUMN) as progress:
 
         progress.add_task("[cyan]Etracting html elements...")
@@ -157,6 +162,8 @@ def extract_pass_data(
 
             if pass_data["status"] == HTTPStatus.NOT_FOUND:
                 continue
+            else:
+                del pass_data["status"]
 
             db = TinyDB(db_loc_full)
             if db_overwrite:
@@ -184,6 +191,7 @@ def extract_pass_data(
         db.update({"names": all_names, "alts": all_alts})
     else:
         db.insert({"names": all_names, "alts": all_alts})
+    system_logger("QUAELDICH", "finished!")
 
     return all_passes
 
@@ -233,12 +241,6 @@ def get_pass_data(li: Any) -> dict[str, Any]:
         _, ft = _convert_german(ft)
         all_from_to.append(ft)
 
-    # Obtain URLs for each path and path ids used in quaeldich website
-    path_info = _get_path_info(pass_url)
-    if path_info["status"] == HTTPStatus.NOT_FOUND:
-        warnings.warn(path_info["msg"], RuntimeWarning)
-        return {"status": HTTPStatus.NOT_FOUND}
-
     coord_info = _get_pass_coord(pass_url)
     if coord_info["status"] == HTTPStatus.NOT_FOUND:
         warnings.warn(coord_info["msg"], RuntimeWarning)
@@ -246,16 +248,15 @@ def get_pass_data(li: Any) -> dict[str, Any]:
     else:
         pass_coord = coord_info["coord"]
 
-    urls_info = _get_path_url(pass_url)
-    if urls_info["status"] == HTTPStatus.NOT_FOUND:
-        warnings.warn(urls_info["msg"], RuntimeWarning)
+    # Extract all path data
+    path_info = _get_path_info(pass_url)
+    if path_info["status"] == HTTPStatus.NOT_FOUND:
+        warnings.warn(path_info["msg"], RuntimeWarning)
         return {"status": HTTPStatus.NOT_FOUND}
     else:
-        path_urls = urls_info["urls"]
+        path_urls = path_info["path_urls"]
+        path_gpt_js = path_info["path_gpt_js"]
         gpt_dict = {}
-        path_ids = _get_path_ids(path_urls)
-        path_gpt_js = _get_gpt_data_js(path_ids)
-        # Store data in the dictionary
         for i, (gjs, ft, purl) in enumerate(
             zip(path_gpt_js, all_from_to, path_urls)
         ):
@@ -306,7 +307,7 @@ def _get_pass_region(all_links: list[str], pass_url: str) -> dict[str, Any]:
         region = ""
 
         status = HTTPStatus.NOT_FOUND
-        msg = f"Quaeldich: country and region information cannot be found in {pass_url}"
+        msg = f"Quaeldich: country and region information cannot be found in {pass_url}!"
 
     return {"country": country, "region": region, "status": status, "msg": msg}
 
@@ -333,112 +334,107 @@ def _get_pass_coord(pass_url: str) -> dict[str, Any]:
     return {"coord": coord, "status": status, "msg": msg}
 
 
-def _get_gpt_data_js(path_ids) -> list[str]:
-    """In quaeldich website, all gpt data are written in .js file. From
-    `path_ids`, get the url of js files.
+def _get_path_info(pass_url) -> dict[str, Any]:
+    # Extract path urls
+    # Get path id
+    # Obtain path gpt
 
-    Args:
-        path_ids (list[str]): path ids
-
-    Returns:
-        list[str]: js file url
-    """
-    # Get gpt js file
-    gpt_js = [f"{BASE_URL}/qdtp/anfahrten/{ids}.json" for ids in path_ids]
-
-    return gpt_js
-
-
-def _get_path_ids(path_urls: list[str]) -> list[str]:
-    """Extract path ids. There is no obvious way to extract GPT data or data-id from
-    quaeldich website. Only way that I found was, find the image for the pass's graident
-    and remove unnecessary string part.
-
-    Args:
-        path_urls (list[str]): list of urls for pathes
-
-    Returns:
-        list[str]: path ids
-    """
-
-    path_ids_container = [
-        bs(requests.get(url).text, "lxml").findAll("img") for url in path_urls
-    ]
-
-    path_ids = [
-        img["src"].replace("/qdtp/anfahrten/", "").replace("_gradient.gif", "")
-        for path in path_ids_container
-        for img in path
-        if img["src"].find("gradient") >= 0
-    ]
-
-    return path_ids
-
-
-def _get_path_url(pass_url: str) -> dict[str, Any]:
-    """From pass name, obtain path url.
-    Args:
-        pass_name (str): name of the pass, in German.
-    """
-
-    all_url_links = bs(requests.get(pass_url).text, "lxml").find_all(
-        "a", href=True
+    path_divs = bs(requests.get(pass_url).text, "lxml").find_all(
+        "div", {"class": "panel panel-default"}
     )
 
-    path_urls = [
-        link["href"]
-        for link in all_url_links
-        if link["href"].find("/profile/") >= 0
-    ]
-
-    if len(path_urls) > 0:
-        return {"urls": path_urls, "status": HTTPStatus.OK, "msg": ""}
-    else:
-        msg = f"Quaeldich: path urls cannot be found! Check input pass_url:\n{pass_url}"
-        return {"urls": [""], "status": HTTPStatus.NOT_FOUND, "msg": msg}
-
-
-def _get_path_info(pass_url: str) -> dict[str, Any]:
-    """From pass name, obtain basic path information.
-
-    Args:
-        pass_name (str): name of the pass, in German.
-
-    Returns:
-        list[str]: list of urls of the pass
-    """
-    all_info = bs(requests.get(pass_url).text, "lxml").find_all("small")
-
+    path_urls: list[str] = []
     distance: list[float] = []
     elevation: list[int] = []
     gradient: list[float] = []
-    status = HTTPStatus.OK
-    msg = ""
+    path_gpt_js: list[str] = []
+    msg: str = ""
 
-    for info in all_info:
+    for pdiv in path_divs:
+        # Extract path urls
+        links = pdiv.find_all("a", href=True)
 
-        if "km" in info.text and "Hm" in info.text and "%" in info.text:
-            data_extracted = info.text.replace(" ", "").split("|")
-            distance.append(
-                float(data_extracted[0].replace(",", ".").replace("km", ""))
-            )
-            elevation.append(
-                int(data_extracted[1].replace(",", ".").replace("Hm", ""))
-            )
-            gradient.append(
-                float(data_extracted[2].replace(",", ".").replace("%", ""))
-            )
+        has_profile = False
+        for li in links:
+            if li["href"].find("/profile/") >= 0:
+                path_urls.append(li["href"])
+                has_profile = True
+
+        # Get path ids
+        if has_profile:
+            infos = pdiv.find_all("small")
+
+            for info in infos:
+                if (
+                    "km" in info.text
+                    and "Hm" in info.text
+                    and "%" in info.text
+                ):
+                    data_extracted = info.text.replace(" ", "").split("|")
+                    distance.append(
+                        float(
+                            data_extracted[0]
+                            .replace(",", ".")
+                            .replace("km", "")
+                        )
+                    )
+                    elevation.append(
+                        int(
+                            data_extracted[1]
+                            .replace(",", ".")
+                            .replace("Hm", "")
+                        )
+                    )
+                    gradient.append(
+                        float(
+                            data_extracted[2]
+                            .replace(",", ".")
+                            .replace("%", "")
+                        )
+                    )
+            path_ids_container = pdiv.find_all("img")
+
+            for img in path_ids_container:
+                if img["src"].find("gradient") >= 0:
+                    path_id = (
+                        img["src"]
+                        .replace("/qdtp/anfahrten/", "")
+                        .replace("_gradient.gif", "")
+                    )
+                    path_gpt_js.append(
+                        f"{BASE_URL}/qdtp/anfahrten/{path_id}.json"
+                    )
+    if len(path_urls) == 0:
+        msg = f"Quaeldich: path urls cannot be found! Check input pass_url:\n{pass_url}"
+        return {"status": HTTPStatus.NOT_FOUND, "msg": msg}
 
     if len(distance) == 0 or len(elevation) == 0 or len(gradient) == 0:
-
-        status = HTTPStatus.NOT_FOUND
         msg = f"Quaeldich: Basic information (km, Hm, and %) cannot be found! Check input pass_url:\n{pass_url}"
+        return {"status": HTTPStatus.NOT_FOUND, "msg": msg}
+
+    if len(path_gpt_js) == 0:
+        msg = f"Quaeldich: path gpt data cannot be found! Check input pass_url:\n{pass_url}"
+        return {"status": HTTPStatus.NOT_FOUND, "msg": msg}
+
+    if (
+        not len(path_urls)
+        == len(distance)
+        == len(elevation)
+        == len(gradient)
+        == len(path_gpt_js)
+    ):
+        msg = (
+            f"Quaeldich: path data mismatch! Check input pass_url:\n{pass_url}"
+        )
+        return {"status": HTTPStatus.NOT_FOUND, "msg": msg}
 
     return {
+        "path_urls": path_urls,
         "distance": distance,
         "elevation": elevation,
         "gradient": gradient,
-        "status": status,
+        "path_gpt_js": path_gpt_js,
+        "status": HTTPStatus.OK,
         "msg": msg,
     }
 
