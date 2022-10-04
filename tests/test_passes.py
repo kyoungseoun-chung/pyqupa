@@ -2,8 +2,22 @@
 import pytest
 
 from pypass.passes import PassDB
+from pypass.quaeldich import _get_path_info
 from pypass.quaeldich import extract_pass_data
 from pypass.quaeldich import get_total_pass_count
+
+
+def test_pass_data_using_module_db() -> None:
+
+    passdb = PassDB()
+
+    pass_dist = passdb.search([10.0, 15.0], "distance")
+    pass_reg = passdb.search("alpen", "region")
+
+
+def test_extract_path_data_with_url() -> None:
+
+    _get_path_info("https://www.quaeldich.de/paesse/zuflucht/")
 
 
 def test_data_extraction() -> None:
@@ -16,13 +30,6 @@ def test_data_extraction() -> None:
     )
 
     assert len(data) == 5
-
-
-def test_pass_data_using_module_db() -> None:
-
-    passdb = PassDB()
-
-    pass_reg = passdb.search("alpen", "region")
 
 
 def test_pass_data_using_test_db() -> None:
