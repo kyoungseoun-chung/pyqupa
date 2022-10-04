@@ -20,7 +20,7 @@ from tinydb import TinyDB
 from .quaeldich import DB_LOC
 from .quaeldich import PASS_DB
 from .quaeldich import PASS_NAME_DB
-from .tools import decompose_digit
+from .tools import decompose_digit, progress
 
 PASS_DB_LOC = DB_LOC + PASS_DB
 PASS_NAME_DB_LOC = DB_LOC + PASS_NAME_DB
@@ -396,12 +396,24 @@ def search_pass_by_distance(distance: list[float], db_loc: str) -> list[Pass]:
 
     searched_pass = []
 
-    for data in from_db:
-        dist_list = np.asarray(data["total_distance"])
-        indicies = np.argwhere(
-            np.logical_and(dist_list >= distance[0], dist_list <= distance[1])
+    total_searched = len(from_db)
+    with progress:
+        task = progress.add_task(
+            "Passes: obtaining pass data...", total=total_searched
         )
-        searched_pass.append(Pass(**_update_list_data(data, indicies)))
+        for i, data in enumerate(from_db):
+            dist_list = np.asarray(data["total_distance"])
+            indicies = np.argwhere(
+                np.logical_and(
+                    dist_list >= distance[0], dist_list <= distance[1]
+                )
+            )
+            searched_pass.append(Pass(**_update_list_data(data, indicies)))
+            progress.update(
+                task,
+                description=f"Passes: processed #{i}/{total_searched}",
+                advance=1,
+            )
 
     if len(searched_pass) == 0:
         raise RuntimeError(
@@ -411,9 +423,7 @@ def search_pass_by_distance(distance: list[float], db_loc: str) -> list[Pass]:
     return searched_pass
 
 
-def search_pass_by_elevation(
-    elevation: list[float], db_loc: str
-) -> list[Pass]:
+def search_pass_by_elevation(elevation: list[float], db_loc: str) -> list[Pass]:
 
     pass_db_loc = db_loc + PASS_DB
     db = TinyDB(pass_db_loc)

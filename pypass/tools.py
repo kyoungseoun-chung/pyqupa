@@ -4,9 +4,12 @@ from typing import Optional
 
 import numpy as np
 from rich.console import Console
+from rich.progress import Progress
 
 console = Console()
 rprint = console.print
+
+progress = Progress()
 
 
 def system_logger(

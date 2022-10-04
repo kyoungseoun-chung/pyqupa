@@ -4,7 +4,6 @@
 Note: Not all data are stored correctly. This code will exclude any incomplete Pass data.
 """
 import os
-import sys
 import warnings
 from http import HTTPStatus
 from pathlib import Path
