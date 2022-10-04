@@ -1,4 +1,4 @@
-# Currently, the code is in alpha stage. Heavly under development! Features can be changed without notice.
+# Currently, the code is in the alpha stage. It is currently under heavy development! Feature changes may occur without prior notice.
 # PYPASS: Python wrapper for [quaeldich.de](https://www.quaeldich.de)
 
 A Python interface to access data in [quaeldich.de](https://www.quaeldich.de).
