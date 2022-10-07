@@ -20,7 +20,7 @@ We use `poetry` to manage all dependencies.
 
 ## Basic usage
 
-**Warning**: search by region is not working properly!
+Below shows basic search options you can use with `pypass`.
 
 ```python
 >>> from pypass.passees import PassDB
@@ -59,7 +59,7 @@ We use `poetry` to manage all dependencies.
 
 ### DB structure
 
-Our we have two different DBs.
+`pypass` has two different DBs.
 - `pypass/db/passes.json`: DB contains all scraped Pass data from quaeldic.de. And the DB looks like:
 ```json
 // pypass/db/passes.json
@@ -137,9 +137,24 @@ Or access via [URL](https://kyoungseoun-chung-pypass-pypassapp-xwr7oa.streamlita
 #### Demos:
 
 * Search by name:
-![search by name](.pypass/../pypass/assets/screenshots/search_by_name.png)
-* Search by distance:
-![search by name](.pypass/../pypass/assets/screenshots/search_by_distance.png)
+    - Pass can be searched by its name (supports drop-down menu).
+    - Visual representation of paths in 2D (Folium) and 3D (Deck.gl) map.
+    - Plots for the gradient profiles.
+
+<img src="./pypass/assets/screenshots/search_by_name.png" alt="search by name" width="500"/>
+
+* Search by distance/elevation/height:
+    - Passes are searched from the given range (using slider).
+    - If a number of searched data is larger than 10, display statistics (histogram).
+    - List of all searched data.
+
+<img src="./pypass/assets/screenshots/search_by_distance.png" alt="search by elevation" width="500"/>
+
+* Search by region/country:
+    - Passes are searched from the given region/country.
+    - Only works with German. However, you can search with drop-down menu.
+
+<img src="./pypass/assets/screenshots/search_by_region.png" alt="search by region" width="500"/>
 
 
 ### Current issues/WIPs
@@ -152,3 +167,7 @@ Below is the list of issues or WIPs.
 #### GUI
 - [ ] Change streamlit plots from `matplotlib` to `plotly`.
 - [ ] Elaborate gradient profile plot
+
+#### MISC
+- [ ] Proper translation (German - English).
+- [ ] Fix all broken Pass names.
