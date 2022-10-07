@@ -1,4 +1,3 @@
-# Currently, the code is in the alpha stage. It is currently under heavy development! Feature changes may occur without prior notice.
 # PYPASS: Python wrapper for [quaeldich.de](https://www.quaeldich.de)
 
 A Python interface to access data in [quaeldich.de](https://www.quaeldich.de).
@@ -26,13 +25,15 @@ We use `poetry` to manage all dependencies.
 >>> passdb = PassDB()
 >>> passdb.search("Mont Ventoux", "name")
 # List of a Pass with length == 1
-[Pass(name='Mont Ventoux', coord=[44.1736, 5.27879], ...)]
->>> passdb.search("italien alpen", "region") # Not working at this point...
+[Pass(name="Mont Ventoux", coord=[44.1736, 5.27879], ...)]
+>>> passdb.search("alpen", "region") # Only works for german names
+# List of Passes matching criteria
+[Pass(name="Stilfser Joch", ...), Pass(...), ...]
+# Below commands returns similar return type shown above
+>>> passdb.search("italien", "country") # Only works for german name
 >>> passdb.search([1800, 2000], "height")
 >>> passdb.search([10.0, 15.0], "distance")
 >>> passdb.search([500, 1000], "elevation")
-# List of Passes matching criteria either "region", "height", "distance", or "elevation".
-[Pass(name='Mont Ventoux', coord=[44.1736, 5.27879], ...), Pass(...), ...]
 ```
 
 ## Features
@@ -53,6 +54,40 @@ We use `poetry` to manage all dependencies.
     ```zsh
     py -m pypass -e NUMBER_OF_PASS_TO_BE_EXTRACTED -d DIRECTORY_TO_BE_SAVE_DB
     ```
+
+### DB structure
+
+Our we have two different DBs.
+- `pypass/db/passes.json`: DB contains all scraped Pass data from quaeldic.de. And the DB looks like:
+```json
+// pypass/db/passes.json
+{
+    "_default":
+    {
+        "1":
+        {
+            "name": ..., // name of Pass
+            "coord": ..., // coordinate of the summit
+            "country": ...,
+            "region": ...,
+            "height": ...,
+            "total_distance": ..., // distances of all paths to the summit
+            "total_elevation": ..., // elevation gain of all paths to the summit
+            "avg_grad": ..., // average gradient of each paths
+            "max_distance": ...,
+            "min_distance": ...,
+            "max_elevation": ...,
+            "min_elevation": ...,
+            "url": ..., // Pass url at quaeldich.de
+            "gpts": ..., // geopositioning data. No actual data, only links.
+            "status": ..., // HTTP reponse code. Always 200.
+        },
+        ...
+    }
+}
+```
+- `pypass/db/pass_names.json`: DB only contains all Pass names, regions, and country. If Pass has alternative name, it also stored as `alt`.
+
 
 ### Search and access Pass data
 
@@ -109,14 +144,5 @@ Or access via [URL](https://kyoungseoun-chung-pypass-pypassapp-xwr7oa.streamlita
 
 Below is the list of issues or WIPs.
 
-#### Data exception handling
-- [ ] Empty Pass basic data.
-- [ ] Empty geopositioning data.
-- [ ] Non-empty geopositioning data but with empty string.
-
-#### Better data process
-- [ ] Elaborate gradient computation.
-
-#### GUI app
-- [ ] Pass search options.
-- [ ] Change plots from `matplotlib` to `plotly`.
+- [ ] DB data update
+- [ ] Change streamlit plots from `matplotlib` to `plotly`.

@@ -146,6 +146,8 @@ def extract_pass_data(
 
     all_passes = []
     all_names = []
+    all_region = []
+    all_country = []
     all_alts = []
 
     total_list = len(html_pass_list)
@@ -177,6 +179,8 @@ def extract_pass_data(
 
             all_alts.append(pass_data["alt"])
             all_names.append(pass_data["name"])
+            all_country.append(pass_data["country"])
+            all_region.append(pass_data["region"])
             all_passes.append(pass_data)
 
             progress.update(
@@ -187,9 +191,23 @@ def extract_pass_data(
 
     db = TinyDB(name_db_loc_full)
     if db_overwrite:
-        db.update({"names": all_names, "alts": all_alts})
+        db.update(
+            {
+                "names": all_names,
+                "alts": all_alts,
+                "country": all_country,
+                "region": all_region,
+            }
+        )
     else:
-        db.insert({"names": all_names, "alts": all_alts})
+        db.insert(
+            {
+                "names": all_names,
+                "alts": all_alts,
+                "country": all_country,
+                "region": all_region,
+            }
+        )
     system_logger("QUAELDICH", "finished!")
 
     return all_passes
