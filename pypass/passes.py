@@ -296,7 +296,7 @@ class Pass:
             fig, ax = plt.subplots(figsize=(GRAD_FIG_WIDTH, GRAD_FIG_HEIGHT))
 
             ax.bar(
-                self.grad_bin[idx],
+                self.grad_bin[idx] / 1000,
                 self.elev[idx],
                 color=self.grad_color[idx],
                 width=0.1,
@@ -307,6 +307,7 @@ class Pass:
             ax.set_xlim(0, self.total_distance[idx])
             ax.set_xlabel("distance [km]")
             ax.set_ylabel("elevation [m]")
+            pass
 
             if show:
                 plt.show()
@@ -490,9 +491,7 @@ def search_pass_by_distance(distance: list[float], db_loc: str) -> list[Pass]:
     return searched_pass
 
 
-def search_pass_by_elevation(
-    elevation: list[float], db_loc: str
-) -> list[Pass]:
+def search_pass_by_elevation(elevation: list[float], db_loc: str) -> list[Pass]:
 
     pass_db_loc = db_loc + PASS_DB
     db = TinyDB(pass_db_loc)
