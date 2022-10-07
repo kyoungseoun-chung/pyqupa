@@ -125,14 +125,23 @@ NameError: The given name (Mont Ventox) is not in our database. Did you mean ['M
 ```
 
 
-### Running GUI (WIP)
+### Running GUI
 
-We created GUI using [steamlit](https://streamlit.io). You can run GUI by typing following command:
+We created GUI using [steamlit](https://streamlit.io).
+
+- You can run GUI by typing following command in the file directory (git cloned directory):
+
 ```zsh
 python -m streamlit run pypass/app.py
 ```
 
-Or access via [URL](https://kyoungseoun-chung-pypass-pypassapp-xwr7oa.streamlitapp.com/)
+- Or you can simply run
+
+```zsh
+python -m pypass --gui # -g also works
+```
+
+It is possible to access via [URL](https://kyoungseoun-chung-pypass-pypassapp-xwr7oa.streamlitapp.com/) (not stable at this moment)
 
 #### Demos:
 
@@ -171,3 +180,4 @@ Below is the list of issues or WIPs.
 #### MISC
 - [ ] Proper translation (German - English).
 - [ ] Fix all broken Pass names.
+- [ ] Need proper test files

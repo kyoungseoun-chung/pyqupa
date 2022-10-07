@@ -3,7 +3,6 @@
 from itertools import cycle
 from typing import Any
 from typing import Optional
-from typing import Union
 
 import folium
 import numpy as np
@@ -19,7 +18,6 @@ from pypass.tools import hex_to_rgb
 COLOR_CODE = cycle(
     ["#FF7900", "#F94E5D", "#CA4B8C", "#835698", "#445582", "#2F4858"]
 )
-
 
 try:
     MAPBOX_API_KEY = dotenv_values(".env")["MAPBOX_API_KEY"]
