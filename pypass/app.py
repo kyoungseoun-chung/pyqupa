@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Display pass data using streamlit library."""
-import os
 from itertools import cycle
 from typing import Any
 from typing import Optional
+from typing import Union
 
 import folium
 import numpy as np
@@ -32,25 +32,29 @@ from pypass.quaeldich import DB_LOC, PASS_NAME_DB
 st.set_page_config(layout="centered", page_title="Pass Finder", page_icon="⛰")
 
 
-def pypass_pass_search_by_name() -> list[Pass]:
+def pypass_pass_search(attr: str) -> list[Pass]:
 
     db_names = TinyDB(DB_LOC + PASS_NAME_DB)
 
     # Find all pass name including alternative name
-    all_pass_names = db_names.all()[0]["names"]
-    all_pass_names += list(filter(None, db_names.all()[0]["alts"]))
+    if attr == "name":
+        all_names = db_names.all()[0][attr + "s"]
+        all_names += list(filter(None, db_names.all()[0]["alts"]))
+    else:
+        all_names = db_names.all()[0][attr]
 
-    pass_name = st.selectbox("Search the pass", all_pass_names)
-    pass_searched = PassDB().search(pass_name, "name")
+    all_names.sort()
+    target = st.selectbox("Search the pass", all_names)
+    pass_searched = PassDB().search(target, attr)
 
     return pass_searched
 
 
-def pypass_pass_search_by_distance(
-    bounds: list[float],
+def pypass_pass_search_by_bounds(
+    bounds: list[float], search_type: str
 ) -> list[Pass]:
 
-    pass_searched = PassDB().search(bounds, "distance")
+    pass_searched = PassDB().search(bounds, search_type)
 
     return pass_searched
 
@@ -206,7 +210,26 @@ def pypass_app_gradient_plots(pass_searched: Pass) -> None:
         st.pyplot(pass_searched.plot_gradient(idx))
 
 
-def from_pass_list_to_pd(
+def from_pass_to_pd(pass_searched: list[Pass]) -> pd.DataFrame:
+    info = dict()
+    for data in pass_searched:
+        info.update(
+            {
+                data.name: {
+                    "alt": data.alt,
+                    "coord": data.coord,
+                    "country": data.country,
+                    "region": data.region,
+                    "height [m]": data.height,
+                    "link": data.url,
+                }
+            }
+        )
+
+    return pd.DataFrame(info).T
+
+
+def from_path_to_pd(
     pass_searched: list[Pass],
 ) -> tuple[pd.DataFrame, int]:
 
@@ -231,40 +254,131 @@ def from_pass_list_to_pd(
     return pd.DataFrame(info).T, num_paths
 
 
+def get_table(
+    pass_searched: list[Pass], search_type: str
+) -> Optional[pd.DataFrame]:
+
+    with st.spinner("Retrieving data ..."):
+
+        with st.spinner("Processing ..."):
+            if search_type == "height":
+                pass_df = from_pass_to_pd(pass_searched)
+                st.write(f"A total of {len(pass_searched)} Passes are found.")
+            else:
+                pass_df, num_paths = from_path_to_pd(pass_searched)
+                st.write(f"A total of {num_paths} climb paths are found.")
+
+    return pass_df
+
+
+def display_table(df: pd.DataFrame) -> None:
+    st.write("List of searched Passes:")
+    st.dataframe(df)
+
+
+def display_hist(
+    df: pd.DataFrame, attr: str, bounds: Optional[list[float]]
+) -> None:
+    import plotly.express as px
+
+    data = df[attr].to_numpy(dtype=np.float64)
+
+    if data.size > 10:
+        # Only plot data if searched results return more than 10 data
+
+        if bounds is None:
+            bin_size = int((data.max() - data.min()) / 20)
+            counts, bins = np.histogram(
+                data, bins=range(int(data.min()), int(data.max()), bin_size)
+            )
+        else:
+            bin_size = int((bounds[1] - bounds[0]) / 20)
+
+            counts, bins = np.histogram(
+                data, bins=range(bounds[0], bounds[1], bin_size)
+            )
+
+        bins = 0.5 * (bins[:-1] + bins[1:])
+
+        fig = px.bar(x=bins, y=counts, labels={"x": f"{attr}", "y": "counts"})
+
+        st.write("Statistics of searched Passes:")
+        st.plotly_chart(fig, use_container_width=True)
+
+
 if __name__ == "__main__":
 
-    tab1, tab2, tab3 = st.tabs(["Name", "Distance", "Height"])
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
+        ["Name", "Distance", "Height", "Elevation", "Region", "Country"]
+    )
 
     with tab1:
-        st.header("Search pass by name")
+        st.header("Search Passes by name")
 
-        pass_searched = pypass_pass_search_by_name()
+        pass_searched = pypass_pass_search("name")
         if pass_searched is not None:
             pypass_app_title(pass_searched[0])
             pypass_app_map_selector(pass_searched[0])
             pypass_app_gradient_plots(pass_searched[0])
 
     with tab2:
+        st.header("Search Passes by distance")
+
         bounds = st.slider("Select search range.", 0, 40, (10, 30))
         st.write(
-            f"Searching pass in range from {bounds[0]} km to {bounds[1]} km ..."
+            f"Searching Pass's path distance from {bounds[0]} km to {bounds[1]} km ..."
         )
 
-        with st.spinner("Retrieving data ..."):
-            pass_searched = pypass_pass_search_by_distance(bounds)
-
-        if pass_searched is not None:
-            with st.spinner("Processing ..."):
-                pass_df, num_paths = from_pass_list_to_pd(pass_searched)
-            st.write(f"A total of {num_paths} climb paths are found.")
-
-            if st.button("Show the list"):
-                st.dataframe(pass_df)
-            else:
-                pass
-
-        else:
-            st.write("No result found! Please adjust the range.")
+        pass_searched = pypass_pass_search_by_bounds(bounds, "distance")
+        df = get_table(pass_searched, "distance")
+        if df is not None:
+            display_hist(df, "distance [km]", bounds)
+            display_table(df)
 
     with tab3:
-        pass
+        st.header("Search Passes by altitude")
+
+        bounds = st.slider("Select search range.", 0, 3000, (1000, 2000))
+        st.write(
+            f"Searching Pass elevation from {bounds[0]} m to {bounds[1]} m ..."
+        )
+
+        pass_searched = pypass_pass_search_by_bounds(bounds, "height")
+        df = get_table(pass_searched, "height")
+        if df is not None:
+            display_hist(df, "height [m]", bounds)
+            display_table(df)
+
+    with tab4:
+        st.header("Search Passes by elevation gain")
+
+        bounds = st.slider("Select search range.", 0, 2500, (500, 2000))
+        st.write(
+            f"Searching Pass elevation gain from {bounds[0]} m to {bounds[1]} m ..."
+        )
+
+        pass_searched = pypass_pass_search_by_bounds(bounds, "elevation")
+        df = get_table(pass_searched, "elevation")
+        if df is not None:
+            display_hist(df, "elevation [m]", bounds)
+            display_table(df)
+
+    with tab5:
+        st.header("Search Passes by region")
+        pass_searched = pypass_pass_search("region")
+        df = get_table(pass_searched, "region")
+
+        if df is not None:
+            display_hist(df, "elevation [m]", None)
+            display_hist(df, "distance [km]", None)
+            display_table(df)
+
+    with tab6:
+        st.header("Search Passes by country")
+        pass_searched = pypass_pass_search("country")
+        df = get_table(pass_searched, "country")
+
+        if df is not None:
+            display_hist(df, "elevation [m]", None)
+            display_hist(df, "distance [km]", None)
+            display_table(df)
