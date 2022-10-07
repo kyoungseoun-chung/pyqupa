@@ -5,7 +5,7 @@ A Python interface to access data in [quaeldich.de](https://www.quaeldich.de).
 [![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://kyoungseoun-chung-pypass-pypassapp-xwr7oa.streamlitapp.com/)
 
 Quaeldich.de owns all rights to the data. I am therefore willing to give up the repository upon request from quaeldich.de.
- 
+
 ## Installation
 
 Install from source:
@@ -146,5 +146,9 @@ Or access via [URL](https://kyoungseoun-chung-pypass-pypassapp-xwr7oa.streamlita
 
 Below is the list of issues or WIPs.
 
+#### DBs
 - [ ] DB data update
+
+#### GUI
 - [ ] Change streamlit plots from `matplotlib` to `plotly`.
+- [ ] Elaborate gradient profile plot
