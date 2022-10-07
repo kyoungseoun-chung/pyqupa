@@ -167,3 +167,4 @@ cython_debug/
 .LSOverride
 
 pass_data_pre/
+reference/
