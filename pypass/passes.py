@@ -187,14 +187,9 @@ class Pass:
         return self._descend
 
     @property
-    def gradient(self) -> list[NDArray[np.float64]]:
+    def grad(self) -> list[NDArray[np.float64]]:
         """Computed gradient. Interpolated every 100 meter from 50 meter."""
         return self._grad
-
-    @property
-    def grad_interp(self) -> list[NDArray[np.float64]]:
-        """Interpolated gradient."""
-        return self._grad_interp
 
     @property
     def grad_bin(self) -> list[NDArray[np.float64]]:
@@ -213,13 +208,7 @@ class Pass:
         return self._distance
 
     @property
-    def elevation(self) -> list[NDArray[np.float64]]:
-        """Elevation of the Pass in meter."""
-
-        return self._elevation
-
-    @property
-    def elev_interp(self) -> list[NDArray[np.float64]]:
+    def elev(self) -> list[NDArray[np.float64]]:
         """Elevlation interpolated to grad_bin."""
         return self._elev_interp
 
@@ -233,6 +222,14 @@ class Pass:
         """Upper limit of the elevation."""
         return self._elev_upper
 
+    @property
+    def up(self) -> list[float]:
+        return self._up
+
+    @property
+    def down(self) -> list[float]:
+        return self._down
+
     def grad_process(self) -> None:
         """Compute average gradient of every 100m."""
 
@@ -240,13 +237,15 @@ class Pass:
         self._grad_min = []
         self._flat = []
         self._descend = []
+        self._up = []
+        self._down = []
+
         self._grad = []
-        self._grad_interp = []
-        self._grad_color = []
-        self._distance = []
-        self._elevation = []
-        self._elev_interp = []
         self._grad_bin = []
+        self._grad_color = []
+        self._elev_interp = []
+
+        self._distance = []
 
         # For plot bounds
         self._elev_lower = []
@@ -262,42 +261,29 @@ class Pass:
                 # Altitude cannot be zero?
                 dist = dist[height > 0.0]
                 height = height[height > 0.0]  # remove zero
-                self._elevation.append(height)
 
                 self._elev_lower.append(decompose_digit(height[0], -2)[0])
                 self._elev_upper.append(decompose_digit(height[-1], 2)[0])
 
-                # Compute gradient
-                mask = np.diff(dist) > 1
-                grad = np.zeros_like(np.diff(dist))
-                grad[mask] = (
-                    np.diff(height)[mask] / np.diff(dist)[mask] * 100
-                )  # in %
-                # Starting point will be zero gradient
-                self._grad.append(np.append([0.0], grad))
+                (
+                    grad_interp,
+                    grad_bin,
+                    elev_interp,
+                    profile_data,
+                ) = _compute_grad(dist, height)
 
+                self._descend.append(profile_data["descend"])
+                self._flat.append(profile_data["flat"])
+                self._up.append(profile_data["up"])
+                self._down.append(profile_data["down"])
                 # Min-max gradient measured
-                self._grad_max.append(min(np.max(grad), GRAD_MAX))
-                self._grad_min.append(max(np.min(grad), GRAD_MIN))
+                self._grad_max.append(min((grad_interp).max(), GRAD_MAX))
+                self._grad_min.append(max((grad_interp).min(), GRAD_MIN))
 
-                flat_mask = np.logical_and(grad >= -2, grad < 2)
-                descend_mask = grad < -2
-                # Sum all flat section
-                self._flat.append(np.diff(dist)[flat_mask].sum() / 1000)
-                # Sum all descend section
-                self._descend.append(np.diff(dist)[descend_mask].sum() / 1000)
-
-                # Gradients are binned at the mid-points
-                mid_pt = dist[:-1] + np.diff(dist)[0] / 2
-
-                # Interpolate every 100 meter and the start at 50 meter not 0.
-                # TODO: it should be average over 100m not the interpolation.
-                xp = np.arange(50, dist[-1] + 50, 100)
-                self._grad_bin.append(xp / 1000)
-                grad_interp = np.interp(xp, mid_pt, grad)
-                self._grad_interp.append(grad_interp)
-                elev_interp = np.interp(xp / 1000, dist / 1000, height)
+                self._grad.append(grad_interp)
+                self._grad_bin.append(grad_bin)
                 self._elev_interp.append(elev_interp)
+
                 self._grad_color.append(grad_to_color(grad_interp))
 
     # NOTE: type for plt.Figure is ambigous. Therefore, type: ignore
@@ -311,7 +297,7 @@ class Pass:
 
             ax.bar(
                 self.grad_bin[idx],
-                self.elev_interp[idx],
+                self.elev[idx],
                 color=self.grad_color[idx],
                 width=0.1,
             )
@@ -331,6 +317,78 @@ class Pass:
             fig = None
 
         return fig
+
+
+def _compute_grad(
+    dist: NDArray[np.float64], height: NDArray[np.float64]
+) -> tuple[
+    NDArray[np.float64],
+    NDArray[np.float64],
+    NDArray[np.float64],
+    dict[str, float],
+]:
+    """Compute averaged gradient over every 100m."""
+
+    # Substract by the initial height
+    last = dist[-1]  # in meter
+    # Find the nearest 100th meter
+    last_rounded = int(np.round((last - 50) / 100)) + 1
+
+    grad = np.zeros(last_rounded)
+    lng = np.zeros(last_rounded)
+    mheight = np.zeros(last_rounded)
+
+    start: float = 0.0
+
+    flat: float = 0.0
+    descend: float = 0.0
+    up: float = 0.0
+    down: float = 0.0
+
+    for idx in range(last_rounded):
+
+        lng[idx] = start
+        add_dist = []
+        add_height = []
+
+        if idx == last_rounded - 1:
+            for d, h in zip(dist, height):
+                if d > lng[idx - 1] + 50:
+                    add_height.append(h)
+                    add_dist.append(d)
+        else:
+            for d, h in zip(dist, height):
+                if d > start - 50 and d <= start + 50:
+                    add_height.append(h)
+                    add_dist.append(d)
+
+        dist_array = np.asarray(add_dist, dtype=np.float64)
+        ddist = (dist_array - dist_array[0]).sum()
+
+        height_array = np.asarray(add_height, dtype=np.float64)
+        hmean = height_array.mean()
+        hdist = (height_array - height_array[0]).sum()
+
+        start += 100
+        grad[idx] = hdist / ddist * 100
+        mheight[idx] = hmean
+
+        if grad[idx] > -2 and grad[idx] < 2:
+            flat += ddist
+        elif grad[idx] <= -2:
+            descend += ddist
+            down += hdist
+        else:
+            up += hdist
+
+    lng[-1] = last
+
+    return (
+        grad,
+        lng,
+        mheight,
+        {"flat": flat, "descend": descend, "down": down, "up": up},
+    )
 
 
 def grad_to_color(grad: NDArray[np.float64]) -> NDArray[np.unicode_]:
@@ -412,9 +470,7 @@ def search_pass_by_distance(distance: list[float], db_loc: str) -> list[Pass]:
     return searched_pass
 
 
-def search_pass_by_elevation(
-    elevation: list[float], db_loc: str
-) -> list[Pass]:
+def search_pass_by_elevation(elevation: list[float], db_loc: str) -> list[Pass]:
 
     pass_db_loc = db_loc + PASS_DB
     db = TinyDB(pass_db_loc)
