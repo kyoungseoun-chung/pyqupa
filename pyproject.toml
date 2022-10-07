@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pypass"
-version = "0.0.1"
+version = "0.1.0"
 description = "PYthon mountain PASS data processor."
 authors = ["Kyoungseoun Chung <kchung@student.ethz.ch>"]
 

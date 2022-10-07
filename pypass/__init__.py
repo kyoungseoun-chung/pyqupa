@@ -4,7 +4,7 @@ from typing import Any
 
 from pypass.quaeldich import extract_pass_data
 
-__version__ = "0.0.1"
+__version__ = "0.1.0"
 
 EX_PARSE = argparse.ArgumentParser(
     prog="pypass",

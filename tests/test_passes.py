@@ -11,9 +11,10 @@ def test_pass_data_using_module_db() -> None:
 
     passdb = PassDB()
 
-    pass_name = passdb.search("Mont Ventoux", "name")
-    pass_dist = passdb.search([10.0, 15.0], "distance")
-    pass_reg = passdb.search("alpen", "region")
+    passdb.search("Arberstraße", "name")
+    passdb.search([10.0, 15.0], "distance")
+    passdb.search("alpen", "region")
+    passdb.search([500, 1500], "elevation")
 
 
 def test_extract_path_data_with_url() -> None:
@@ -31,6 +32,13 @@ def test_data_extraction() -> None:
     )
 
     assert len(data) == 5
+
+
+def test_pass_data_processing_test_db() -> None:
+    passdb = PassDB("./tests/test_db/")
+    Pass = passdb.search("Stilfser Joch", "name")[0]()
+    Pass.plot_gradient(0, True)
+    pass
 
 
 def test_pass_data_using_test_db() -> None:

@@ -491,7 +491,9 @@ def search_pass_by_distance(distance: list[float], db_loc: str) -> list[Pass]:
     return searched_pass
 
 
-def search_pass_by_elevation(elevation: list[float], db_loc: str) -> list[Pass]:
+def search_pass_by_elevation(
+    elevation: list[float], db_loc: str
+) -> list[Pass]:
 
     pass_db_loc = db_loc + PASS_DB
     db = TinyDB(pass_db_loc)
@@ -515,7 +517,9 @@ def search_pass_by_elevation(elevation: list[float], db_loc: str) -> list[Pass]:
     for data in from_db:
         dist_list = np.asarray(data["total_elevation"])
         indicies = np.argwhere(
-            np.logical_and(dist_list >= elevation[0], dist_list <= elevation[1])
+            np.logical_and(
+                dist_list >= elevation[0], dist_list <= elevation[1]
+            )
         )
 
         searched_pass.append(Pass(**_update_list_data(data, indicies)))

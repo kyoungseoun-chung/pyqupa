@@ -195,8 +195,8 @@ def extract_pass_data(
             {
                 "names": all_names,
                 "alts": all_alts,
-                "country": all_country,
-                "region": all_region,
+                "country": list(set(all_country)),
+                "region": list(set(all_region)),
             }
         )
     else:
@@ -204,8 +204,8 @@ def extract_pass_data(
             {
                 "names": all_names,
                 "alts": all_alts,
-                "country": all_country,
-                "region": all_region,
+                "country": list(set(all_country)),
+                "region": list(set(all_region)),
             }
         )
     system_logger("QUAELDICH", "finished!")
