@@ -362,17 +362,37 @@ def _compute_grad(
                     add_height.append(h)
                     add_dist.append(d)
 
-        dist_array = np.asarray(add_dist, dtype=np.float64)
-        ddist = (dist_array - dist_array[0]).sum()
+        if len(add_dist) == 0:
+            hdist = 0.0
+            grad[idx] = 0.0
+            if idx == 0:
+                ddist = 50
+                mheight[idx] = height[0]
+            else:
+                ddist = 100
+                mheight[idx] = mheight[idx - 1]
+        elif len(add_dist) == 1:
+            if idx == 0:
+                ddist = 50
+                hdist = add_height[0] - height[0]
+                grad[idx] = hdist / ddist * 100
+            else:
+                ddist = add_dist[0] - lng[idx - 1]
+                hdist = add_height[0] - mheight[idx - 1]
+                grad[idx] = hdist / ddist * 100
+            mheight[idx] = add_height[0]
+        else:
+            dist_array = np.asarray(add_dist, dtype=np.float64)
+            ddist = (dist_array - dist_array[0]).sum()
 
-        height_array = np.asarray(add_height, dtype=np.float64)
-        hmean = height_array.mean()
-        hdist = (height_array - height_array[0]).sum()
+            height_array = np.asarray(add_height, dtype=np.float64)
+            hmean = height_array.mean()
+            hdist = (height_array - height_array[0]).sum()
+
+            grad[idx] = hdist / ddist * 100
+            mheight[idx] = hmean
 
         start += 100
-        grad[idx] = hdist / ddist * 100
-        mheight[idx] = hmean
-
         if grad[idx] > -2 and grad[idx] < 2:
             flat += ddist
         elif grad[idx] <= -2:
@@ -470,7 +490,9 @@ def search_pass_by_distance(distance: list[float], db_loc: str) -> list[Pass]:
     return searched_pass
 
 
-def search_pass_by_elevation(elevation: list[float], db_loc: str) -> list[Pass]:
+def search_pass_by_elevation(
+    elevation: list[float], db_loc: str
+) -> list[Pass]:
 
     pass_db_loc = db_loc + PASS_DB
     db = TinyDB(pass_db_loc)
