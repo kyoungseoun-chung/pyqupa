@@ -8,8 +8,7 @@ from typing import get_origin
 from typing import Optional
 from typing import Union
 
-import matplotlib as mpl
-import matplotlib.pyplot as plt
+from plotly import graph_objects as go
 import numpy as np
 import requests
 from bs4 import BeautifulSoup as bs
@@ -21,15 +20,10 @@ from .quaeldich import DB_LOC
 from .quaeldich import PASS_DB
 from .quaeldich import PASS_NAME_DB
 from .tools import decompose_digit
-from .tools import progress
 
 PASS_DB_LOC = DB_LOC + PASS_DB
 PASS_NAME_DB_LOC = DB_LOC + PASS_NAME_DB
 
-
-PX = 1 / mpl.rcParams["figure.dpi"]
-GRAD_FIG_WIDTH = 720 * PX
-GRAD_FIG_HEIGHT = 120 * PX
 GRAD_TO_COLOR = np.asarray(
     [
         "#a43074",
@@ -286,36 +280,63 @@ class Pass:
 
                 self._grad_color.append(grad_to_color(grad_interp))
 
-    # NOTE: type for plt.Figure is ambigous. Therefore, type: ignore
-    def plot_gradient(
-        self, idx: int, show: bool = False, tool: str = "pyplot"
-    ) -> Optional[plt.Figure]:  # type: ignore
+    def plot_gradient(self, idx: int) -> go.Figure:
         """Plot gradient profile."""
 
-        if tool == "pyplot":
-            fig, ax = plt.subplots(figsize=(GRAD_FIG_WIDTH, GRAD_FIG_HEIGHT))
+        # WIP
+        fig = None
 
-            ax.bar(
-                self.grad_bin[idx] / 1000,
-                self.elev[idx],
-                color=self.grad_color[idx],
-                width=0.1,
+        dist = self.grad_bin[idx] / 1000
+        elev = self.elev[idx]
+        color = self.grad_color[idx]
+        elev_diff = elev[-1] - elev[0]
+        base = elev[0] - elev_diff * 0.1
+        upper = elev_diff * 0.1 + elev[-1]
+        num_patch = dist.shape[0] - 1
+
+        fig = go.Figure()
+        fig.update_xaxes(range=[dist[0], dist[-1]], zeroline=False)
+        fig.update_yaxes(range=[base, upper], zeroline=False)
+        for i in range(num_patch):
+
+            fig.add_shape(
+                {
+                    "type": "path",
+                    "path": f"M{dist[i]},{base} L{dist[i]},{elev[i]} L{dist[i+1]},{elev[i+1]}, L{dist[i+1]},{base} Z",
+                },
+                fillcolor=color[i],
+                line_color="rgba(255, 255, 255, 0)",
             )
-            ax.set_yticks(np.arange(0, 3000, 500))
-            ax.set_xticks(np.arange(0, 40, 5))
-            ax.set_ylim(self.elev_lower[idx], self.elev_upper[idx])
-            ax.set_xlim(0, self.total_distance[idx])
-            ax.set_xlabel("distance [km]")
-            ax.set_ylabel("elevation [m]")
-            pass
+        fig.update_layout(
+            xaxis_title="distance [km]", yaxis_title="elevation [m]"
+        )
 
-            if show:
-                plt.show()
-        elif tool == "plotly":
-            # WIP
-            fig = None
-        else:
-            fig = None
+        return fig
+
+    def plot_heatmap(self) -> go.Figure:
+
+        fig = go.Figure()
+
+        z = []
+        c_scale = []
+        min_grad = 0
+        dc = 1 / 40
+        for i, c in enumerate(GRAD_TO_COLOR):
+            z.append(i - 20)
+            c_scale.append([min_grad + i * dc, c])
+
+        fig.add_trace(go.Heatmap(z=[z], colorscale=c_scale))
+        fig.update_traces(showscale=False)
+        fig.update_layout(
+            autosize=False,
+            width=700,
+            height=200,
+            xaxis={
+                "tickvals": [0, 10, 20, 30, 40],
+                "ticktext": ["-20", "-10", "0", "10", "20"],
+            },
+            yaxis={"visible": False},
+        )
 
         return fig
 
@@ -491,9 +512,7 @@ def search_pass_by_distance(distance: list[float], db_loc: str) -> list[Pass]:
     return searched_pass
 
 
-def search_pass_by_elevation(
-    elevation: list[float], db_loc: str
-) -> list[Pass]:
+def search_pass_by_elevation(elevation: list[float], db_loc: str) -> list[Pass]:
 
     pass_db_loc = db_loc + PASS_DB
     db = TinyDB(pass_db_loc)
@@ -517,9 +536,7 @@ def search_pass_by_elevation(
     for data in from_db:
         dist_list = np.asarray(data["total_elevation"])
         indicies = np.argwhere(
-            np.logical_and(
-                dist_list >= elevation[0], dist_list <= elevation[1]
-            )
+            np.logical_and(dist_list >= elevation[0], dist_list <= elevation[1])
         )
 
         searched_pass.append(Pass(**_update_list_data(data, indicies)))

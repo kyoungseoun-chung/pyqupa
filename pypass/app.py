@@ -180,9 +180,9 @@ def pypass_app_map_folium(pass_searched: Pass) -> None:
 
         folium.Marker(stp, icon=icon_start).add_to(m)
 
-        folium.PolyLine(
-            path[:, :2], color=color, weight=4, opacity=0.7
-        ).add_to(m)
+        folium.PolyLine(path[:, :2], color=color, weight=4, opacity=0.7).add_to(
+            m
+        )
 
     st_folium(m)
 
@@ -204,8 +204,10 @@ def pypass_app_gradient_plots(pass_searched: Pass) -> None:
 
     for idx, path in enumerate(pass_searched.path_names):
 
-        st.subheader(path)
-        st.pyplot(pass_searched.plot_gradient(idx))
+        st.write(f"Elevation profile: {path}")
+        st.plotly_chart(pass_searched.plot_gradient(idx))
+
+    st.plotly_chart(pass_searched.plot_heatmap())
 
 
 def from_pass_to_pd(pass_searched: list[Pass]) -> pd.DataFrame:
