@@ -171,13 +171,12 @@ It is possible to access via [URL](https://kyoungseoun-chung-pypass-pypassapp-xw
 Below is the list of issues or WIPs.
 
 #### DBs
-- [ ] DB data update
+- [ ] Function to update DB data efficiently.
 
 #### GUI
-- [ ] Change streamlit plots from `matplotlib` to `plotly`.
-- [ ] Elaborate gradient profile plot
+- [ ] Sorting table properly.
 
 #### MISC
 - [ ] Proper translation (German - English).
 - [ ] Fix all broken Pass names.
-- [ ] Need proper test files
+- [ ] Make proper test files
