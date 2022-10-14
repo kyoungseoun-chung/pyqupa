@@ -2,7 +2,7 @@
 
 A Python interface to access data in [quaeldich.de](https://www.quaeldich.de).
 
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://kyoungseoun-chung-pypass-pypassapp-xwr7oa.streamlitapp.com/)
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://pypass.streamlitapp.com)
 
 Quaeldich.de owns all rights to the data. I am therefore willing to give up the repository upon request from quaeldich.de.
 
@@ -141,7 +141,7 @@ python -m streamlit run pypass/app.py
 python -m pypass --gui # -g also works
 ```
 
-It is possible to access via [URL](https://kyoungseoun-chung-pypass-pypassapp-xwr7oa.streamlitapp.com/) (not stable at this moment)
+It is possible to access via [URL](https://pypass.streamlitapp.com)
 
 #### Demos:
 
