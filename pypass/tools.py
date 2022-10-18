@@ -3,6 +3,8 @@
 from typing import Optional
 
 import numpy as np
+import requests
+from lxml import html
 from rich.console import Console
 from rich.progress import Progress
 
@@ -10,6 +12,23 @@ console = Console()
 rprint = console.print
 
 progress = Progress()
+
+
+def translate(
+    target: str, from_lang: str = "auto", to_lang: str = "auto"
+) -> str:
+    """Returns the translation using google translate
+    Please define `from_lang` and `to_lang` with iso code.
+    (French = fr, English = en, Spanish = es, etc...)
+    if not defined it will detect it or use english by default
+    """
+    link = (
+        f"http://translate.google.com/m?tl={to_lang}&sl={from_lang}&q={target}"
+    )
+
+    page = requests.get(link)
+    tree = html.fromstring(page.content)
+    return tree.xpath('//div[@class="result-container"]/text()')[0]
 
 
 def system_logger(
