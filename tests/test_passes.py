@@ -4,7 +4,21 @@ import pytest
 from pypass.passes import PassDB
 from pypass.quaeldich import _get_path_info
 from pypass.quaeldich import extract_pass_data
+from pypass.quaeldich import get_all_regions_available
 from pypass.quaeldich import get_total_pass_count
+from pypass.tools import translate
+
+
+def test_translate() -> None:
+
+    res = translate("Alpen", "de", "en")
+    assert res == "Alps"
+
+
+def test_quaeldich_all_regions() -> None:
+
+    res = get_all_regions_available()
+    assert res["country"][0] == "Albania"
 
 
 def test_pass_data_using_module_db() -> None:

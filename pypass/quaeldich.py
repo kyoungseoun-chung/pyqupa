@@ -23,6 +23,7 @@ from tinydb import Query
 from tinydb import TinyDB
 
 from pypass.tools import system_logger
+from pypass.tools import translate
 
 DB_LOC = os.path.dirname(__file__) + "/db/"
 PASS_DB = "passes.json"
@@ -57,6 +58,24 @@ ASCII = "ae ae ae d d f h i l o o oe oe ss t ue ss"
 TIME_REMAIN_COLUMN = TimeRemainingColumn()
 TIME_COLUMN = TimeElapsedColumn()
 TEXT_COLUMN = TextColumn("{task.description}")
+
+
+def get_all_regions_available() -> dict[str, list[str]]:
+    pass
+    r = requests.get(BASE_PASS_URL)
+    region_info = bs(r.text, "lxml").find_all(
+        "select", {"class": "input-sm form-control"}
+    )
+
+    c_de = region_info[0]
+    c_en = [translate(c.text, "de", "en") for c in c_de.find_all("option")]
+    c_en = c_en[1:]
+
+    r_de = region_info[0]
+    r_en = [translate(r.text, "de", "en") for r in r_de.find_all("option")]
+    r_en = r_en[1:]
+
+    return {"country": c_en, "region": r_en}
 
 
 def remove_diacritics(
