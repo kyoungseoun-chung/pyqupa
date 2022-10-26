@@ -8,10 +8,13 @@ Quaeldich.de owns all rights to the data. I am therefore willing to give up the 
 
 ## Installation
 
-Install from source:
-We use `poetry` to manage all dependencies.
-- `git clone git@github.com:kyoungseoun-chung/pypass.git`
-- `poetry install`
+You can use either [poetry](https://python-poetry.org) or pip.
+
+```bash
+pip install pyqupa
+# or
+poetry add pyqupa
+```
 
 ## How it works
 
