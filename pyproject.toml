@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pyqupa"
-version = "0.1.0"
+version = "0.1.1"
 description = "PYthon Qualdich.de mountain PAss data processor."
 authors = ["Kyoungseoun Chung <kyoungseoun.chung@gmail.com>"]
 readme = "README.md"

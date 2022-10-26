@@ -4,7 +4,7 @@ from typing import Any
 
 from pyqupa.quaeldich import extract_pass_data
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 EX_PARSE = argparse.ArgumentParser(
     prog="pyqupa",
