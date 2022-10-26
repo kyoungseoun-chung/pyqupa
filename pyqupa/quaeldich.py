@@ -22,8 +22,8 @@ from rich.progress import TimeRemainingColumn
 from tinydb import Query
 from tinydb import TinyDB
 
-from pypass.tools import system_logger
-from pypass.tools import translate
+from pyqupa.tools import system_logger
+from pyqupa.tools import translate
 
 DB_LOC = os.path.dirname(__file__) + "/db/"
 PASS_DB = "passes.json"

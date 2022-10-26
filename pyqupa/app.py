@@ -13,7 +13,7 @@ from dotenv import dotenv_values
 from streamlit_folium import st_folium
 from tinydb import TinyDB
 
-from pypass.tools import hex_to_rgb
+from pyqupa.tools import hex_to_rgb
 
 COLOR_CODE = cycle(
     ["#FF7900", "#F94E5D", "#CA4B8C", "#835698", "#445582", "#2F4858"]
@@ -24,13 +24,13 @@ try:
 except KeyError:
     MAPBOX_API_KEY = st.secrets["MAPBOX_API_KEY"]
 
-from pypass.passes import PassDB, Pass
-from pypass.quaeldich import DB_LOC, PASS_NAME_DB
+from pyqupa.passes import PassDB, Pass
+from pyqupa.quaeldich import DB_LOC, PASS_NAME_DB
 
 st.set_page_config(layout="centered", page_title="Pass Finder", page_icon="⛰")
 
 
-def pypass_pass_search(attr: str) -> list[Pass]:
+def pyqupa_pass_search(attr: str) -> list[Pass]:
 
     db_names = TinyDB(DB_LOC + PASS_NAME_DB)
 
@@ -48,7 +48,7 @@ def pypass_pass_search(attr: str) -> list[Pass]:
     return pass_searched
 
 
-def pypass_pass_search_by_bounds(
+def pyqupa_pass_search_by_bounds(
     bounds: list[float], search_type: str
 ) -> list[Pass]:
 
@@ -58,7 +58,7 @@ def pypass_pass_search_by_bounds(
 
 
 # NOTE: Currently not sure what is the type hint for streamlit app. Therefore, use Any.
-def pypass_app_title(pass_searched: Pass) -> Any:
+def pyqupa_app_title(pass_searched: Pass) -> Any:
 
     pass_title = (
         f"**{pass_searched.name}**"
@@ -89,7 +89,7 @@ def pypass_app_title(pass_searched: Pass) -> Any:
 
 
 # TODO: test this first and replace folium later if possible
-def pypass_app_map_deck(pass_searched: Pass):
+def pyqupa_app_map_deck(pass_searched: Pass):
 
     # AWS Open Data Terrain Tiles
     terrain_image = "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"
@@ -157,7 +157,7 @@ def pypass_app_map_deck(pass_searched: Pass):
     st.pydeck_chart(r)
 
 
-def pypass_app_map_folium(pass_searched: Pass) -> None:
+def pyqupa_app_map_folium(pass_searched: Pass) -> None:
 
     m = folium.Map(location=pass_searched.coord)
     m.fit_bounds(pass_searched.map_bound)
@@ -187,7 +187,7 @@ def pypass_app_map_folium(pass_searched: Pass) -> None:
     st_folium(m)
 
 
-def pypass_app_map_selector(pass_searched: Pass) -> None:
+def pyqupa_app_map_selector(pass_searched: Pass) -> None:
 
     map_type_deck = "Deck.gl (3D)"
     map_type_folium = "Folium (2D)"
@@ -195,12 +195,12 @@ def pypass_app_map_selector(pass_searched: Pass) -> None:
     option = st.selectbox("Choose map type", [map_type_deck, map_type_folium])
 
     if option == map_type_deck:
-        pypass_app_map_deck(pass_searched)
+        pyqupa_app_map_deck(pass_searched)
     else:
-        pypass_app_map_folium(pass_searched)
+        pyqupa_app_map_folium(pass_searched)
 
 
-def pypass_app_gradient_plots(pass_searched: Pass) -> None:
+def pyqupa_app_gradient_plots(pass_searched: Pass) -> None:
 
     for idx, path in enumerate(pass_searched.path_names):
 
@@ -315,11 +315,11 @@ if __name__ == "__main__":
     with tab1:
         st.header("Search Passes by name")
 
-        pass_searched = pypass_pass_search("name")
+        pass_searched = pyqupa_pass_search("name")
         if pass_searched is not None:
-            pypass_app_title(pass_searched[0])
-            pypass_app_map_selector(pass_searched[0])
-            pypass_app_gradient_plots(pass_searched[0])
+            pyqupa_app_title(pass_searched[0])
+            pyqupa_app_map_selector(pass_searched[0])
+            pyqupa_app_gradient_plots(pass_searched[0])
 
     with tab2:
         st.header("Search Passes by distance")
@@ -329,7 +329,7 @@ if __name__ == "__main__":
             f"Searching Pass's path distance from {bounds[0]} km to {bounds[1]} km ..."
         )
 
-        pass_searched = pypass_pass_search_by_bounds(bounds, "distance")
+        pass_searched = pyqupa_pass_search_by_bounds(bounds, "distance")
         df = get_table(pass_searched, "distance")
         if df is not None:
             display_hist(df, "distance [km]", bounds)
@@ -343,7 +343,7 @@ if __name__ == "__main__":
             f"Searching Pass elevation from {bounds[0]} m to {bounds[1]} m ..."
         )
 
-        pass_searched = pypass_pass_search_by_bounds(bounds, "height")
+        pass_searched = pyqupa_pass_search_by_bounds(bounds, "height")
         df = get_table(pass_searched, "height")
         if df is not None:
             display_hist(df, "height [m]", bounds)
@@ -357,7 +357,7 @@ if __name__ == "__main__":
             f"Searching Pass elevation gain from {bounds[0]} m to {bounds[1]} m ..."
         )
 
-        pass_searched = pypass_pass_search_by_bounds(bounds, "elevation")
+        pass_searched = pyqupa_pass_search_by_bounds(bounds, "elevation")
         df = get_table(pass_searched, "elevation")
         if df is not None:
             display_hist(df, "elevation [m]", bounds)
@@ -365,7 +365,7 @@ if __name__ == "__main__":
 
     with tab5:
         st.header("Search Passes by region")
-        pass_searched = pypass_pass_search("region")
+        pass_searched = pyqupa_pass_search("region")
         df = get_table(pass_searched, "region")
 
         if df is not None:
@@ -375,7 +375,7 @@ if __name__ == "__main__":
 
     with tab6:
         st.header("Search Passes by country")
-        pass_searched = pypass_pass_search("country")
+        pass_searched = pyqupa_pass_search("country")
         df = get_table(pass_searched, "country")
 
         if df is not None:

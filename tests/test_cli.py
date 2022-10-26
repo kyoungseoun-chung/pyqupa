@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Test pypass cli test."""
-from pypass import EX_PARSE
-from pypass import main
-from pypass.passes import Pass
+"""Test pyqupa cli test."""
+from pyqupa import EX_PARSE
+from pyqupa import main
+from pyqupa.passes import Pass
 
 
 def test_cli() -> None:

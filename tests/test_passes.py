@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 import pytest
 
-from pypass.passes import PassDB
-from pypass.quaeldich import _get_path_info
-from pypass.quaeldich import extract_pass_data
-from pypass.quaeldich import get_all_regions_available
-from pypass.quaeldich import get_total_pass_count
-from pypass.tools import translate
+from pyqupa.passes import PassDB
+from pyqupa.quaeldich import _get_path_info
+from pyqupa.quaeldich import extract_pass_data
+from pyqupa.quaeldich import get_all_regions_available
+from pyqupa.quaeldich import get_total_pass_count
+from pyqupa.tools import translate
 
 
 def test_translate() -> None:
@@ -51,7 +51,7 @@ def test_data_extraction() -> None:
 def test_pass_data_processing_test_db() -> None:
     passdb = PassDB("./tests/test_db/")
     Pass = passdb.search("Stilfser Joch", "name")[0]()
-    Pass.plot_gradient(0, True)
+    Pass.plot_gradient(0)
     pass
 
 

@@ -2,12 +2,11 @@
 import os
 import sys
 
-from streamlit import config as _config
-from streamlit.web import bootstrap
-
 from pypass import __version__
 from pypass import EX_PARSE
 from pypass import main
+from streamlit import config as _config
+from streamlit.web import bootstrap
 
 
 if __name__ == "__main__":

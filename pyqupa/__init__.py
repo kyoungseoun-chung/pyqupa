@@ -2,13 +2,13 @@
 import argparse
 from typing import Any
 
-from pypass.quaeldich import extract_pass_data
+from pyqupa.quaeldich import extract_pass_data
 
 __version__ = "0.1.0"
 
 EX_PARSE = argparse.ArgumentParser(
-    prog="pypass",
-    description="Python interface to access data in quaeldich.de",
+    prog="pyqupa",
+    description="PYthon interface to access data in QUaeldich.de mountain PAss data",
 )
 EX_PARSE.add_argument(
     "-e",

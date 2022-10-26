@@ -1,4 +1,4 @@
-# PYPASS: Python wrapper for [quaeldich.de](https://www.quaeldich.de)
+# PYQUPA: PYthon wrapper for [QUaeldich.de](https://www.quaeldich.de) mountain PAss data
 
 A Python interface to access data in [quaeldich.de](https://www.quaeldich.de).
 

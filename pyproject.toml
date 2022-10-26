@@ -1,7 +1,7 @@
 [tool.poetry]
-name = "pypass"
+name = "pyqupa"
 version = "0.1.0"
-description = "PYthon mountain PASS data processor."
+description = "PYthon Qualdich.de mountain PAss data processor."
 authors = ["Kyoungseoun Chung <kchung@student.ethz.ch>"]
 
 [tool.poetry.dependencies]
