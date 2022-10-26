@@ -2,7 +2,7 @@
 
 A Python interface to access data in [quaeldich.de](https://www.quaeldich.de).
 
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://pypass.streamlitapp.com)
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://pyqupa.streamlitapp.com)
 
 Quaeldich.de owns all rights to the data. I am therefore willing to give up the repository upon request from quaeldich.de.
 
@@ -18,15 +18,15 @@ poetry add pyqupa
 
 ## How it works
 
-[Quaeldich.de](https://www.quaeldich.de) stores all mountain pass data in json files with unique data-ids. For example, **Mont Ventoux** approaching from **Bédoin** has geopositioning data (latitude, longitude, elevation, and distance) identified by `data-id=127_189`. Therefore, data can be accessed via the URL `https://www.quaeldich.de/qdtp/anfahrten/127_189.json`. We scraped all pass data URLs from the website and saved them in `pypass/db/passes.json`. Whenever you attempt to search for pass information, the code will first look for the URL and process data for you.
+[Quaeldich.de](https://www.quaeldich.de) stores all mountain pass data in json files with unique data-ids. For example, **Mont Ventoux** approaching from **Bédoin** has geopositioning data (latitude, longitude, elevation, and distance) identified by `data-id=127_189`. Therefore, data can be accessed via the URL `https://www.quaeldich.de/qdtp/anfahrten/127_189.json`. We scraped all pass data URLs from the website and saved them in `pyqupa/db/passes.json`. Whenever you attempt to search for pass information, the code will first look for the URL and process data for you.
 
 
 ## Basic usage
 
-Below shows basic search options you can use with `pypass`.
+Below shows basic search options you can use with `pyqupa`.
 
 ```python
->>> from pypass.passees import PassDB
+>>> from pyqupa.passees import PassDB
 >>> passdb = PassDB()
 >>> passdb.search("Mont Ventoux", "name")
 # List of a Pass with length == 1
@@ -48,24 +48,24 @@ Below shows basic search options you can use with `pypass`.
 - You can use cli command to extract data from quaeldich.de.
     - You need two arguments `-e` and `-d`.
     - If you set give 0 for `-e`, it will extract all data registered in quaeldich.de.
-    - If you don't set `-d` option, it will save db to `pypass/db/`.
+    - If you don't set `-d` option, it will save db to `pyqupa/db/`.
     - DB doesn't contain geopositioning data. Only relevant URLs to be processed later on.
 
 - Mac OS or Linux
     ```zsh
-    python -m pypass -e NUMBER_OF_PASS_TO_BE_EXTRACTED -d DIRECTORY_TO_BE_SAVE_DB
+    python -m pyqupa -e NUMBER_OF_PASS_TO_BE_EXTRACTED -d DIRECTORY_TO_BE_SAVE_DB
     ```
 - Windows
     ```zsh
-    py -m pypass -e NUMBER_OF_PASS_TO_BE_EXTRACTED -d DIRECTORY_TO_BE_SAVE_DB
+    py -m pyqupa -e NUMBER_OF_PASS_TO_BE_EXTRACTED -d DIRECTORY_TO_BE_SAVE_DB
     ```
 
 ### DB structure
 
-`pypass` has two different DBs.
-- `pypass/db/passes.json`: DB contains all scraped Pass data from quaeldic.de. And the DB looks like:
+`pyqupa` has two different DBs.
+- `pyqupa/db/passes.json`: DB contains all scraped Pass data from quaeldic.de. And the DB looks like:
 ```json
-// pypass/db/passes.json
+// pyqupa/db/passes.json
 {
     "_default":
     {
@@ -91,7 +91,7 @@ Below shows basic search options you can use with `pypass`.
     }
 }
 ```
-- `pypass/db/pass_names.json`: DB only contains all Pass names, regions, and country. If Pass has alternative name, it also stored as `alt`.
+- `pyqupa/db/pass_names.json`: DB only contains all Pass names, regions, and country. If Pass has alternative name, it also stored as `alt`.
 
 
 ### Search and access Pass data
@@ -100,7 +100,7 @@ Below shows basic search options you can use with `pypass`.
 
 - Each `Pass` class contains all paths to the top including information regarding distance, elevation, and gradient.
 ```python
->>> from pypass.passees import PassDB
+>>> from pyqupa.passees import PassDB
 >>> passdb = PassDB()
 >>> Pass = passdb.search("Mont Ventoux", "name")  # Always return list[Pass]
 >>> Pass[0].path_names
@@ -119,7 +119,7 @@ Below shows basic search options you can use with `pypass`.
 
 - Name suggestion for a typo when searching the pass.
 ```python
->>> from pypass.passees import PassDB
+>>> from pyqupa.passees import PassDB
 >>> passdb = PassDB()
 >>> Pass = passdb.search("Mont Venoux", "name") # Wrong input name
 ...
@@ -135,16 +135,16 @@ We created GUI using [steamlit](https://streamlit.io).
 - You can run GUI by typing following command in the file directory (git cloned directory):
 
 ```zsh
-python -m streamlit run pypass/app.py
+python -m streamlit run pyqupa/app.py
 ```
 
 - Or you can simply run
 
 ```zsh
-python -m pypass --gui # -g also works
+python -m pyqupa --gui # -g also works
 ```
 
-It is possible to access via [URL](https://pypass.streamlitapp.com)
+It is possible to access via [URL](https://pyqupa.streamlitapp.com)
 
 #### Demos:
 
@@ -153,20 +153,20 @@ It is possible to access via [URL](https://pypass.streamlitapp.com)
     - Visual representation of paths in 2D (Folium) and 3D (Deck.gl) map.
     - Plots for the gradient profiles.
 
-<img src="./pypass/assets/screenshots/search_by_name.png" alt="search by name" width="500"/>
+<img src="./pyqupa/assets/screenshots/search_by_name.png" alt="search by name" width="500"/>
 
 * Search by distance/elevation/height:
     - Passes are searched from the given range (using slider).
     - If a number of searched data is larger than 10, display statistics (histogram).
     - List of all searched data.
 
-<img src="./pypass/assets/screenshots/search_by_distance.png" alt="search by elevation" width="500"/>
+<img src="./pyqupa/assets/screenshots/search_by_distance.png" alt="search by elevation" width="500"/>
 
 * Search by region/country:
     - Passes are searched from the given region/country.
     - Only works with German. However, you can search with drop-down menu.
 
-<img src="./pypass/assets/screenshots/search_by_region.png" alt="search by region" width="500"/>
+<img src="./pyqupa/assets/screenshots/search_by_region.png" alt="search by region" width="500"/>
 
 
 ### Current issues/WIPs
